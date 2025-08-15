@@ -1,0 +1,107 @@
+{
+  "todos": [
+    {
+      "id": "1",
+      "title": "Launch new website",
+      "category": "Website",
+      "owner": "Dylan",
+      "priority": "high",
+      "status": "in_progress",
+      "dueDate": "2025-08-20T00:00:00.000Z",
+      "completed": false,
+      "subtasks": [
+        { "id": "s1", "text": "Finalize design mockups", "completed": true },
+        { "id": "s2", "text": "Set up hosting", "completed": true },
+        { "id": "s3", "text": "Implement responsive design", "completed": false },
+        { "id": "s4", "text": "Add analytics tracking", "completed": false }
+      ],
+      "createdAt": "2025-08-01T10:00:00.000Z",
+      "updatedAt": "2025-08-15T10:00:00.000Z"
+    },
+    {
+      "id": "2",
+      "title": "Database migration",
+      "category": "Backend",
+      "owner": "Team",
+      "priority": "high",
+      "status": "not_started",
+      "dueDate": "2025-08-18T00:00:00.000Z",
+      "completed": false,
+      "subtasks": [
+        { "id": "s5", "text": "Backup current database", "completed": false },
+        { "id": "s6", "text": "Test migration script", "completed": false },
+        { "id": "s7", "text": "Schedule maintenance window", "completed": false }
+      ],
+      "createdAt": "2025-08-10T10:00:00.000Z",
+      "updatedAt": "2025-08-10T10:00:00.000Z"
+    },
+    {
+      "id": "3",
+      "title": "Q3 Marketing Campaign",
+      "category": "Marketing",
+      "owner": "Dylan",
+      "priority": "medium",
+      "status": "in_progress",
+      "dueDate": "2025-08-25T00:00:00.000Z",
+      "completed": false,
+      "subtasks": [
+        { "id": "s8", "text": "Create social media calendar", "completed": true },
+        { "id": "s9", "text": "Design email templates", "completed": false },
+        { "id": "s10", "text": "Write blog posts", "completed": false },
+        { "id": "s11", "text": "Set up ad campaigns", "completed": false }
+      ],
+      "createdAt": "2025-08-05T10:00:00.000Z",
+      "updatedAt": "2025-08-14T10:00:00.000Z"
+    },
+    {
+      "id": "4",
+      "title": "API Documentation",
+      "category": "Backend",
+      "owner": "Team",
+      "priority": "low",
+      "status": "not_started",
+      "dueDate": "2025-08-30T00:00:00.000Z",
+      "completed": false,
+      "createdAt": "2025-08-12T10:00:00.000Z",
+      "updatedAt": "2025-08-12T10:00:00.000Z"
+    },
+    {
+      "id": "5",
+      "title": "Fix login bug",
+      "category": "Website",
+      "owner": "Dylan",
+      "priority": "high",
+      "status": "completed",
+      "dueDate": "2025-08-15T00:00:00.000Z",
+      "completed": true,
+      "subtasks": [
+        { "id": "s12", "text": "Reproduce the issue", "completed": true },
+        { "id": "s13", "text": "Fix authentication logic", "completed": true },
+        { "id": "s14", "text": "Add unit tests", "completed": true }
+      ],
+      "createdAt": "2025-08-13T10:00:00.000Z",
+      "updatedAt": "2025-08-14T16:00:00.000Z"
+    },
+    {
+      "id": "6",
+      "title": "Quarterly review presentation",
+      "category": "Marketing",
+      "owner": "Team",
+      "priority": "medium",
+      "status": "dead",
+      "dueDate": "2025-08-10T00:00:00.000Z",
+      "completed": false,
+      "createdAt": "2025-08-01T10:00:00.000Z",
+      "updatedAt": "2025-08-11T10:00:00.000Z"
+    }
+  ],
+  "categories": [
+    { "id": "1", "name": "Website", "color": "#4A9B4E" },
+    { "id": "2", "name": "Backend", "color": "#01BAD5" },
+    { "id": "3", "name": "Marketing", "color": "#F7901E" }
+  ],
+  "owners": [
+    { "id": "1", "name": "Dylan", "color": "#F04E23" },
+    { "id": "2", "name": "Team", "color": "#9B59B6" }
+  ]
+}

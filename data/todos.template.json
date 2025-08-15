@@ -1,0 +1,32 @@
+{
+  "todos": [],
+  "categories": [
+    {
+      "id": "1",
+      "name": "Website",
+      "color": "#264653"
+    },
+    {
+      "id": "2",
+      "name": "Backend",
+      "color": "#2A9D8F"
+    },
+    {
+      "id": "3",
+      "name": "Marketing",
+      "color": "#E76F51"
+    }
+  ],
+  "owners": [
+    {
+      "id": "1",
+      "name": "Dylan",
+      "color": "#E63946"
+    },
+    {
+      "id": "2",
+      "name": "Team",
+      "color": "#457B9D"
+    }
+  ]
+}
