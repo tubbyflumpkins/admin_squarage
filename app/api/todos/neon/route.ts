@@ -98,13 +98,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true })
     }
 
-    // Update all data (without transaction for neon-http)
-    // Clear existing data
+    // IMPORTANT: This is a full state replacement operation
+    // The frontend sends the complete state, so we need to sync it exactly
+    // This is intentional behavior for the Zustand store persistence
+    
+    // Step 1: Clear existing data to prepare for fresh state
     await db.delete(subtasks)
-    await db.delete(todos)
+    await db.delete(todos) 
     await db.delete(categories)
     await db.delete(owners)
 
+    // Step 2: Insert the new complete state
     // Insert categories
     if (data.categories && data.categories.length > 0) {
       await db.insert(categories).values(data.categories)

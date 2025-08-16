@@ -44,30 +44,18 @@ const apiStorage = {
     }
     
     try {
-      // Try Neon endpoint first, fallback to regular endpoint
-      const endpoints = ['/api/todos/neon', '/api/todos']
-      let data = null
+      // Use Neon endpoint only - no fallback to JSON
+      const response = await fetch('/api/todos/neon')
+      if (!response.ok) throw new Error('Failed to fetch data from Neon')
       
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint)
-          if (response.ok) {
-            data = await response.json()
-            break
-          }
-        } catch {
-          continue
-        }
-      }
-      
-      if (!data) throw new Error('Failed to fetch data from any endpoint')
+      const data = await response.json()
       
       return JSON.stringify({
         state: data,
         version: 0
       })
     } catch (error) {
-      console.error('Error loading data:', error)
+      console.error('Error loading data from Neon:', error)
       return null
     }
   },
@@ -80,29 +68,16 @@ const apiStorage = {
     try {
       const { state } = JSON.parse(value)
       
-      // Try Neon endpoint first, fallback to regular endpoint
-      const endpoints = ['/api/todos/neon', '/api/todos']
-      let success = false
+      // Use Neon endpoint only - no fallback to JSON
+      const response = await fetch('/api/todos/neon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state)
+      })
       
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(state)
-          })
-          if (response.ok) {
-            success = true
-            break
-          }
-        } catch {
-          continue
-        }
-      }
-      
-      if (!success) throw new Error('Failed to save data to any endpoint')
+      if (!response.ok) throw new Error('Failed to save data to Neon')
     } catch (error) {
-      console.error('Error saving data:', error)
+      console.error('Error saving data to Neon:', error)
     }
   },
   removeItem: async (name: string) => {
