@@ -161,10 +161,10 @@ export async function POST(request: Request) {
     
     // Step 3: Delete items that are no longer in the incoming data
     // This is safer because we only delete specific items, not everything
-    const todoIdsToDelete = [...existingTodoIds].filter(id => !incomingTodoIds.has(id))
-    const categoryIdsToDelete = [...existingCategoryIds].filter(id => !incomingCategoryIds.has(id))
-    const ownerIdsToDelete = [...existingOwnerIds].filter(id => !incomingOwnerIds.has(id))
-    const subtaskIdsToDelete = [...existingSubtaskIds].filter(id => !incomingSubtaskIds.has(id))
+    const todoIdsToDelete = Array.from(existingTodoIds).filter(id => !incomingTodoIds.has(id))
+    const categoryIdsToDelete = Array.from(existingCategoryIds).filter(id => !incomingCategoryIds.has(id))
+    const ownerIdsToDelete = Array.from(existingOwnerIds).filter(id => !incomingOwnerIds.has(id))
+    const subtaskIdsToDelete = Array.from(existingSubtaskIds).filter(id => !incomingSubtaskIds.has(id))
     
     // Delete removed items
     if (subtaskIdsToDelete.length > 0) {
