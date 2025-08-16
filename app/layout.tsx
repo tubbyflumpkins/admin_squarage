@@ -26,6 +26,11 @@ const soap = localFont({
 export const metadata: Metadata = {
   title: 'Squarage Admin Dashboard',
   description: 'Admin dashboard for Squarage operations',
+  icons: {
+    icon: '/images/favicon.png',
+    shortcut: '/images/favicon.png',
+    apple: '/images/favicon.png',
+  },
 }
 
 export default function RootLayout({
