@@ -35,6 +35,9 @@ interface TodoStore {
   deleteOwner: (id: string) => void
 }
 
+// Track if we've loaded data from the server
+let hasLoadedFromServer = false
+
 // Custom storage that syncs with API
 const apiStorage = {
   getItem: async (name: string) => {
@@ -49,6 +52,9 @@ const apiStorage = {
       if (!response.ok) throw new Error('Failed to fetch data from Neon')
       
       const data = await response.json()
+      
+      // Mark that we've successfully loaded from server
+      hasLoadedFromServer = true
       
       return JSON.stringify({
         state: data,
@@ -65,8 +71,24 @@ const apiStorage = {
       return
     }
     
+    // CRITICAL: Don't save if we haven't loaded from server yet
+    // This prevents saving empty state on initial load
+    if (!hasLoadedFromServer) {
+      console.log('Skipping save - data not loaded from server yet')
+      return
+    }
+    
     try {
       const { state } = JSON.parse(value)
+      
+      // SAFETY CHECK: Don't save if all arrays are empty
+      // This could indicate a loading issue
+      if ((!state.todos || state.todos.length === 0) && 
+          (!state.categories || state.categories.length === 0) && 
+          (!state.owners || state.owners.length === 0)) {
+        console.warn('Warning: Attempting to save empty state - skipping to prevent data loss')
+        return
+      }
       
       // Use Neon endpoint only - no fallback to JSON
       const response = await fetch('/api/todos/neon', {
