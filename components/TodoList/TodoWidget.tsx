@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import TodoListGrid from './TodoListGrid'
+import TodoListGridReadOnly from './TodoListGridReadOnly'
 
 export default function TodoWidget() {
   const router = useRouter()
@@ -16,12 +16,9 @@ export default function TodoWidget() {
       
       {/* Content - not interactive due to overlay */}
       <div className="relative">
-        <TodoListGrid 
-          isFullPage={false} 
-          containerHeight="auto" 
-          isGlassView 
-          isWidget 
-          readOnly={true}  // Read-only mode to prevent database modifications
+        <TodoListGridReadOnly 
+          isWidget={true}
+          containerHeight="auto"
         />
       </div>
     </div>
