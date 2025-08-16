@@ -74,12 +74,14 @@ const apiStorage = {
       
       const data = await response.json()
       
-      console.log('Successfully loaded data from server')
+      console.log('Successfully loaded data from server:', data)
       
       // Return with loading flags set properly
       return JSON.stringify({
         state: {
-          ...data,
+          todos: data.todos || [],
+          categories: data.categories || [],
+          owners: data.owners || [],
           filters: {
             category: undefined,
             owner: undefined,
@@ -95,8 +97,26 @@ const apiStorage = {
       })
     } catch (error) {
       console.error('Error loading data from Neon:', error)
-      // Return null but with proper flags - DO NOT return empty arrays
-      return null
+      // On error, still return valid state structure with empty data
+      // This allows the app to function even if the initial load fails
+      return JSON.stringify({
+        state: {
+          todos: [],
+          categories: [],
+          owners: [],
+          filters: {
+            category: undefined,
+            owner: undefined,
+            priority: undefined,
+            status: 'all' as FilterBy,
+            sortBy: 'priority' as SortBy,
+          },
+          isLoading: false,
+          hasLoadedFromServer: true, // Mark as loaded even on error to prevent infinite loading
+          lastSaveTime: 0
+        },
+        version: 0
+      })
     }
   },
   
@@ -121,20 +141,20 @@ const apiStorage = {
         return
       }
       
-      // SAFETY CHECK: Don't save if all arrays are empty
+      // SAFETY CHECK: Don't save if all arrays are empty AND we had data before
       if ((!state.todos || state.todos.length === 0) && 
           (!state.categories || state.categories.length === 0) && 
           (!state.owners || state.owners.length === 0)) {
-        console.warn('Warning: Attempting to save empty state - checking if intentional')
         
-        // Only allow empty save if this is truly the first time (no lastSaveTime)
-        if (state.lastSaveTime > 0) {
-          console.error('BLOCKED: Preventing save of empty state when data previously existed')
+        // If lastSaveTime exists and is recent (within last hour), block the save
+        // This prevents accidental data loss while allowing legitimate empty saves
+        const oneHourAgo = Date.now() - (60 * 60 * 1000)
+        if (state.lastSaveTime > oneHourAgo) {
+          console.error('BLOCKED: Preventing save of empty state - data existed recently')
           return
         }
         
-        // Even for first time, be cautious
-        console.warn('Empty state save - this better be intentional!')
+        console.warn('Allowing empty state save - no recent data found')
       }
       
       // Debounce saves to prevent rapid successive calls
@@ -225,7 +245,14 @@ const useTodoStore = create<TodoStore>()(
         const store = get()
         if (!store.hasLoadedFromServer) {
           console.log('Starting manual hydration...')
-          await (store as any).persist.rehydrate()
+          try {
+            await (store as any).persist.rehydrate()
+            console.log('Hydration complete')
+          } catch (error) {
+            console.error('Hydration error:', error)
+            // Even on error, mark as loaded to prevent infinite loading
+            set({ isLoading: false, hasLoadedFromServer: true })
+          }
         }
       },
       
