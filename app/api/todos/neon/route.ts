@@ -60,7 +60,7 @@ export async function GET() {
       owner: todo.owner,
       priority: todo.priority as 'low' | 'medium' | 'high',
       status: todo.status as StoreTodo['status'],
-      dueDate: todo.dueDate ? todo.dueDate.toISOString() : null,
+      dueDate: todo.dueDate,
       completed: todo.completed,
       notes: todo.notes || undefined,
       subtasks: subtasksByTodoId[todo.id] || undefined,
@@ -98,58 +98,56 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true })
     }
 
-    // Start a transaction to update all data
-    await db.transaction(async (tx) => {
-      // Clear existing data
-      await tx.delete(subtasks)
-      await tx.delete(todos)
-      await tx.delete(categories)
-      await tx.delete(owners)
+    // Update all data (without transaction for neon-http)
+    // Clear existing data
+    await db.delete(subtasks)
+    await db.delete(todos)
+    await db.delete(categories)
+    await db.delete(owners)
 
-      // Insert categories
-      if (data.categories && data.categories.length > 0) {
-        await tx.insert(categories).values(data.categories)
-      }
+    // Insert categories
+    if (data.categories && data.categories.length > 0) {
+      await db.insert(categories).values(data.categories)
+    }
 
-      // Insert owners
-      if (data.owners && data.owners.length > 0) {
-        await tx.insert(owners).values(data.owners)
-      }
+    // Insert owners
+    if (data.owners && data.owners.length > 0) {
+      await db.insert(owners).values(data.owners)
+    }
 
-      // Insert todos and subtasks
-      if (data.todos && data.todos.length > 0) {
-        for (const todo of data.todos) {
-          const { subtasks: todoSubtasks, ...todoData } = todo
-          
-          // Insert todo
-          await tx.insert(todos).values({
-            id: todoData.id,
-            title: todoData.title,
-            category: todoData.category,
-            owner: todoData.owner,
-            priority: todoData.priority,
-            status: todoData.status,
-            dueDate: todoData.dueDate ? new Date(todoData.dueDate) : null,
-            completed: todoData.completed,
-            notes: todoData.notes || null,
-            createdAt: new Date(todoData.createdAt),
-            updatedAt: new Date(todoData.updatedAt)
-          })
+    // Insert todos and subtasks
+    if (data.todos && data.todos.length > 0) {
+      for (const todo of data.todos) {
+        const { subtasks: todoSubtasks, ...todoData } = todo
+        
+        // Insert todo
+        await db.insert(todos).values({
+          id: todoData.id,
+          title: todoData.title,
+          category: todoData.category,
+          owner: todoData.owner,
+          priority: todoData.priority,
+          status: todoData.status,
+          dueDate: todoData.dueDate ? new Date(todoData.dueDate) : null,
+          completed: todoData.completed,
+          notes: todoData.notes || null,
+          createdAt: new Date(todoData.createdAt),
+          updatedAt: new Date(todoData.updatedAt)
+        })
 
-          // Insert subtasks if they exist
-          if (todoSubtasks && todoSubtasks.length > 0) {
-            await tx.insert(subtasks).values(
-              todoSubtasks.map(subtask => ({
-                id: subtask.id,
-                todoId: todo.id,
-                text: subtask.text,
-                completed: subtask.completed
-              }))
-            )
-          }
+        // Insert subtasks if they exist
+        if (todoSubtasks && todoSubtasks.length > 0) {
+          await db.insert(subtasks).values(
+            todoSubtasks.map((subtask: StoreSubtask) => ({
+              id: subtask.id,
+              todoId: todo.id,
+              text: subtask.text,
+              completed: subtask.completed
+            }))
+          )
         }
       }
-    })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
