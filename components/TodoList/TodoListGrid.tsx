@@ -66,11 +66,15 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
   } = useTodoStore()
 
   useEffect(() => {
-    setIsHydrated(true)
-    // Manually trigger hydration ONLY after component mounts
-    // This prevents the store from saving empty state on initial load
-    rehydrate()
-  }, [])
+    const loadData = async () => {
+      // Manually trigger hydration ONLY after component mounts
+      // This prevents the store from saving empty state on initial load
+      await rehydrate()
+      setIsHydrated(true)
+    }
+    loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount
 
   useEffect(() => {
     if (sortColumn && sortDirection) {
@@ -150,7 +154,7 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
 
   // Show loading state while data is being fetched from server
   // IMPORTANT: Check loading states BEFORE checking data
-  if (!isHydrated || !hasLoadedFromServer) {
+  if (!isHydrated || isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">

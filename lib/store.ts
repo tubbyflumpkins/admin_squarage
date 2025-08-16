@@ -242,17 +242,24 @@ const useTodoStore = create<TodoStore>()(
         }
         hydrationStarted = true
         
-        const store = get()
-        if (!store.hasLoadedFromServer) {
-          console.log('Starting manual hydration...')
-          try {
-            await (store as any).persist.rehydrate()
-            console.log('Hydration complete')
-          } catch (error) {
-            console.error('Hydration error:', error)
-            // Even on error, mark as loaded to prevent infinite loading
-            set({ isLoading: false, hasLoadedFromServer: true })
-          }
+        console.log('Starting manual hydration...')
+        try {
+          // Force rehydration regardless of current state
+          await (get() as any).persist.rehydrate()
+          
+          // After rehydration, check if data was loaded
+          const newState = get()
+          console.log('Hydration complete. State after hydration:', {
+            todosCount: newState.todos.length,
+            categoriesCount: newState.categories.length,
+            ownersCount: newState.owners.length,
+            hasLoadedFromServer: newState.hasLoadedFromServer,
+            isLoading: newState.isLoading
+          })
+        } catch (error) {
+          console.error('Hydration error:', error)
+          // Even on error, mark as loaded to prevent infinite loading
+          set({ isLoading: false, hasLoadedFromServer: true })
         }
       },
       
@@ -552,7 +559,8 @@ const useTodoStore = create<TodoStore>()(
         owners: state.owners,
         isLoading: state.isLoading,
         hasLoadedFromServer: state.hasLoadedFromServer,
-        lastSaveTime: state.lastSaveTime
+        lastSaveTime: state.lastSaveTime,
+        filters: state.filters  // Include filters to match what getItem returns
       }),
       // CRITICAL: Skip automatic hydration to prevent saving empty state on mount
       skipHydration: true,
