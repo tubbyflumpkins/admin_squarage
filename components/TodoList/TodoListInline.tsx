@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { Plus, Settings } from 'lucide-react'
-import useTodoStore from '@/lib/store-simple'
+import useTodoStore from '@/lib/store'
 import TodoItem from './TodoItem'
 import TodoItemEditable from './TodoItemEditable'
 import CategoryOwnerEditModal from './CategoryOwnerEditModal'

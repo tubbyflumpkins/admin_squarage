@@ -6,7 +6,7 @@ import { Todo } from '@/lib/types'
 import Button from '@/components/UI/Button'
 import CategoryOwnerEditModal from './CategoryOwnerEditModal'
 import { format } from 'date-fns'
-import useTodoStore from '@/lib/store-simple'
+import useTodoStore from '@/lib/store'
 import CustomDropdown from '@/components/UI/CustomDropdown'
 import PriorityDropdown from '@/components/UI/PriorityDropdown'
 

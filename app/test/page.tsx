@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import useTodoStore from '@/lib/store-simple'
+import useTodoStore from '@/lib/store'
 
 export default function TestPage() {
   const [mounted, setMounted] = useState(false)
