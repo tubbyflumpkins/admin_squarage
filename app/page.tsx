@@ -1,7 +1,7 @@
 'use client'
 
 import Header from '@/components/UI/Header'
-import TodoWidget from '@/components/TodoList/TodoWidget'
+import TodoWidgetReadOnly from '@/components/TodoList/TodoWidgetReadOnly'
 
 export default function Home() {
   return (
@@ -21,7 +21,8 @@ export default function Home() {
 
         {/* Widgets grid - ready for future widgets */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <TodoWidget />
+          {/* READ-ONLY widget that cannot modify database */}
+          <TodoWidgetReadOnly />
         </div>
       </main>
     </div>
