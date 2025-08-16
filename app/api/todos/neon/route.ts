@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db, isDatabaseConfigured } from '@/lib/db'
 import { todos, categories, owners, subtasks } from '@/lib/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, sql as drizzleSql } from 'drizzle-orm'
 import type { Todo as StoreTodo, Subtask as StoreSubtask } from '@/lib/types'
 
 // Fallback to JSON file if database is not configured
@@ -87,6 +87,34 @@ export async function POST(request: Request) {
   try {
     const data = await request.json()
     
+    // CRITICAL VALIDATION: Never accept empty state that would delete all data
+    if (!data || typeof data !== 'object') {
+      console.error('Invalid data format received')
+      return NextResponse.json({ error: 'Invalid data format' }, { status: 400 })
+    }
+    
+    // Check if this would result in deleting all data
+    const hasAnyData = (data.todos && data.todos.length > 0) || 
+                       (data.categories && data.categories.length > 0) || 
+                       (data.owners && data.owners.length > 0)
+    
+    if (!hasAnyData) {
+      // Fetch current data to check if database has existing data
+      if (isDatabaseConfigured() && db) {
+        const [existingTodos] = await Promise.all([
+          db.select().from(todos).limit(1)
+        ])
+        
+        if (existingTodos.length > 0) {
+          console.error('BLOCKED: Attempted to delete all data with empty state')
+          return NextResponse.json({ 
+            error: 'Cannot save empty state when database contains data', 
+            blocked: true 
+          }, { status: 400 })
+        }
+      }
+    }
+    
     // Check if database is configured
     if (!isDatabaseConfigured() || !db) {
       console.log('Database not configured, falling back to JSON file')
@@ -98,34 +126,110 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true })
     }
 
-    // IMPORTANT: This is a full state replacement operation
-    // The frontend sends the complete state, so we need to sync it exactly
-    // This is intentional behavior for the Zustand store persistence
+    // Use UPSERT pattern instead of DELETE-then-INSERT
+    // This is much safer and prevents accidental data loss
     
-    // Step 1: Clear existing data to prepare for fresh state
-    await db.delete(subtasks)
-    await db.delete(todos) 
-    await db.delete(categories)
-    await db.delete(owners)
-
-    // Step 2: Insert the new complete state
-    // Insert categories
+    // Step 1: Get all existing IDs
+    const [existingTodos, existingCategories, existingOwners, existingSubtasks] = await Promise.all([
+      db.select({ id: todos.id }).from(todos),
+      db.select({ id: categories.id }).from(categories),
+      db.select({ id: owners.id }).from(owners),
+      db.select({ id: subtasks.id }).from(subtasks)
+    ])
+    
+    const existingTodoIds = new Set(existingTodos.map(t => t.id))
+    const existingCategoryIds = new Set(existingCategories.map(c => c.id))
+    const existingOwnerIds = new Set(existingOwners.map(o => o.id))
+    const existingSubtaskIds = new Set(existingSubtasks.map(s => s.id))
+    
+    // Step 2: Prepare incoming data IDs
+    const incomingTodoIds = new Set(data.todos?.map((t: any) => t.id) || [])
+    const incomingCategoryIds = new Set(data.categories?.map((c: any) => c.id) || [])
+    const incomingOwnerIds = new Set(data.owners?.map((o: any) => o.id) || [])
+    const incomingSubtaskIds = new Set<string>()
+    
+    // Collect all subtask IDs
+    if (data.todos) {
+      for (const todo of data.todos) {
+        if (todo.subtasks) {
+          for (const subtask of todo.subtasks) {
+            incomingSubtaskIds.add(subtask.id)
+          }
+        }
+      }
+    }
+    
+    // Step 3: Delete items that are no longer in the incoming data
+    // This is safer because we only delete specific items, not everything
+    const todoIdsToDelete = [...existingTodoIds].filter(id => !incomingTodoIds.has(id))
+    const categoryIdsToDelete = [...existingCategoryIds].filter(id => !incomingCategoryIds.has(id))
+    const ownerIdsToDelete = [...existingOwnerIds].filter(id => !incomingOwnerIds.has(id))
+    const subtaskIdsToDelete = [...existingSubtaskIds].filter(id => !incomingSubtaskIds.has(id))
+    
+    // Delete removed items
+    if (subtaskIdsToDelete.length > 0) {
+      await db.delete(subtasks).where(
+        drizzleSql`${subtasks.id} IN (${drizzleSql.join(subtaskIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
+      )
+    }
+    if (todoIdsToDelete.length > 0) {
+      await db.delete(todos).where(
+        drizzleSql`${todos.id} IN (${drizzleSql.join(todoIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
+      )
+    }
+    if (categoryIdsToDelete.length > 0) {
+      await db.delete(categories).where(
+        drizzleSql`${categories.id} IN (${drizzleSql.join(categoryIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
+      )
+    }
+    if (ownerIdsToDelete.length > 0) {
+      await db.delete(owners).where(
+        drizzleSql`${owners.id} IN (${drizzleSql.join(ownerIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
+      )
+    }
+    
+    // Step 4: UPSERT categories
     if (data.categories && data.categories.length > 0) {
-      await db.insert(categories).values(data.categories)
+      for (const category of data.categories) {
+        if (existingCategoryIds.has(category.id)) {
+          // Update existing
+          await db.update(categories)
+            .set({
+              name: category.name,
+              color: category.color
+            })
+            .where(eq(categories.id, category.id))
+        } else {
+          // Insert new
+          await db.insert(categories).values(category)
+        }
+      }
     }
-
-    // Insert owners
+    
+    // Step 5: UPSERT owners
     if (data.owners && data.owners.length > 0) {
-      await db.insert(owners).values(data.owners)
+      for (const owner of data.owners) {
+        if (existingOwnerIds.has(owner.id)) {
+          // Update existing
+          await db.update(owners)
+            .set({
+              name: owner.name,
+              color: owner.color
+            })
+            .where(eq(owners.id, owner.id))
+        } else {
+          // Insert new
+          await db.insert(owners).values(owner)
+        }
+      }
     }
-
-    // Insert todos and subtasks
+    
+    // Step 6: UPSERT todos and subtasks
     if (data.todos && data.todos.length > 0) {
       for (const todo of data.todos) {
         const { subtasks: todoSubtasks, ...todoData } = todo
         
-        // Insert todo
-        await db.insert(todos).values({
+        const todoValues = {
           id: todoData.id,
           title: todoData.title,
           category: todoData.category,
@@ -137,23 +241,62 @@ export async function POST(request: Request) {
           notes: todoData.notes || null,
           createdAt: new Date(todoData.createdAt),
           updatedAt: new Date(todoData.updatedAt)
-        })
-
-        // Insert subtasks if they exist
+        }
+        
+        if (existingTodoIds.has(todo.id)) {
+          // Update existing todo
+          await db.update(todos)
+            .set({
+              title: todoValues.title,
+              category: todoValues.category,
+              owner: todoValues.owner,
+              priority: todoValues.priority,
+              status: todoValues.status,
+              dueDate: todoValues.dueDate,
+              completed: todoValues.completed,
+              notes: todoValues.notes,
+              updatedAt: todoValues.updatedAt
+            })
+            .where(eq(todos.id, todo.id))
+        } else {
+          // Insert new todo
+          await db.insert(todos).values(todoValues)
+        }
+        
+        // Handle subtasks
         if (todoSubtasks && todoSubtasks.length > 0) {
-          await db.insert(subtasks).values(
-            todoSubtasks.map((subtask: StoreSubtask) => ({
+          // Get existing subtasks for this todo
+          const existingTodoSubtasks = await db.select({ id: subtasks.id })
+            .from(subtasks)
+            .where(eq(subtasks.todoId, todo.id))
+          const existingTodoSubtaskIds = new Set(existingTodoSubtasks.map(s => s.id))
+          
+          for (const subtask of todoSubtasks) {
+            const subtaskValues = {
               id: subtask.id,
               todoId: todo.id,
               text: subtask.text,
               completed: subtask.completed
-            }))
-          )
+            }
+            
+            if (existingTodoSubtaskIds.has(subtask.id)) {
+              // Update existing subtask
+              await db.update(subtasks)
+                .set({
+                  text: subtaskValues.text,
+                  completed: subtaskValues.completed
+                })
+                .where(eq(subtasks.id, subtask.id))
+            } else {
+              // Insert new subtask
+              await db.insert(subtasks).values(subtaskValues)
+            }
+          }
         }
       }
     }
-
-    return NextResponse.json({ success: true })
+    
+    return NextResponse.json({ success: true, method: 'upsert' })
   } catch (error) {
     console.error('Error saving data to database:', error)
     return NextResponse.json({ error: 'Failed to save data', details: error }, { status: 500 })

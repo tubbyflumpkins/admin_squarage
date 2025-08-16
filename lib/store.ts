@@ -3,10 +3,18 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { Todo, TodoFilters, CategoryOption, OwnerOption, SortBy, TodoStatus, FilterBy, Subtask } from './types'
 
 interface TodoStore {
+  // State
   todos: Todo[]
   categories: CategoryOption[]
   owners: OwnerOption[]
   filters: TodoFilters
+  
+  // Loading state - CRITICAL for preventing race conditions
+  isLoading: boolean
+  hasLoadedFromServer: boolean
+  lastSaveTime: number
+  
+  // Actions
   addTodo: (todo: Omit<Todo, 'id' | 'createdAt' | 'updatedAt'>) => void
   updateTodo: (id: string, todo: Partial<Todo>) => void
   deleteTodo: (id: string) => void
@@ -33,10 +41,15 @@ interface TodoStore {
   addOwner: (name: string) => void
   updateOwner: (id: string, name: string, color: string) => void
   deleteOwner: (id: string) => void
+  
+  // Internal state management
+  setLoadingState: (isLoading: boolean) => void
+  setHasLoadedFromServer: (hasLoaded: boolean) => void
 }
 
-// Track if we've loaded data from the server
-let hasLoadedFromServer = false
+// Debounce timer for saves
+let saveDebounceTimer: NodeJS.Timeout | null = null
+const SAVE_DEBOUNCE_MS = 1000 // Wait 1 second after last change before saving
 
 // Custom storage that syncs with API
 const apiStorage = {
@@ -47,61 +60,127 @@ const apiStorage = {
     }
     
     try {
+      console.log('Loading data from server...')
+      
       // Use Neon endpoint only - no fallback to JSON
       const response = await fetch('/api/todos/neon')
       if (!response.ok) throw new Error('Failed to fetch data from Neon')
       
       const data = await response.json()
       
-      // Mark that we've successfully loaded from server
-      hasLoadedFromServer = true
+      console.log('Successfully loaded data from server')
       
+      // Return with loading flags set properly
       return JSON.stringify({
-        state: data,
+        state: {
+          ...data,
+          isLoading: false,
+          hasLoadedFromServer: true,
+          lastSaveTime: Date.now()
+        },
         version: 0
       })
     } catch (error) {
       console.error('Error loading data from Neon:', error)
-      return null
+      // Return null but with proper flags
+      return JSON.stringify({
+        state: {
+          todos: [],
+          categories: [],
+          owners: [],
+          filters: {
+            category: undefined,
+            owner: undefined,
+            priority: undefined,
+            status: 'all' as FilterBy,
+            sortBy: 'priority' as SortBy,
+          },
+          isLoading: false,
+          hasLoadedFromServer: false,
+          lastSaveTime: 0
+        },
+        version: 0
+      })
     }
   },
+  
   setItem: async (name: string, value: string) => {
     // Only run on client side
     if (typeof window === 'undefined') {
       return
     }
     
-    // CRITICAL: Don't save if we haven't loaded from server yet
-    // This prevents saving empty state on initial load
-    if (!hasLoadedFromServer) {
-      console.log('Skipping save - data not loaded from server yet')
-      return
-    }
-    
     try {
       const { state } = JSON.parse(value)
       
-      // SAFETY CHECK: Don't save if all arrays are empty
-      // This could indicate a loading issue
-      if ((!state.todos || state.todos.length === 0) && 
-          (!state.categories || state.categories.length === 0) && 
-          (!state.owners || state.owners.length === 0)) {
-        console.warn('Warning: Attempting to save empty state - skipping to prevent data loss')
+      // CRITICAL: Check loading state from the state itself
+      if (state.isLoading) {
+        console.log('Skipping save - still loading')
         return
       }
       
-      // Use Neon endpoint only - no fallback to JSON
-      const response = await fetch('/api/todos/neon', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(state)
-      })
+      // CRITICAL: Don't save if we haven't loaded from server yet
+      if (!state.hasLoadedFromServer) {
+        console.log('Skipping save - data not loaded from server yet')
+        return
+      }
       
-      if (!response.ok) throw new Error('Failed to save data to Neon')
+      // SAFETY CHECK: Don't save if all arrays are empty
+      if ((!state.todos || state.todos.length === 0) && 
+          (!state.categories || state.categories.length === 0) && 
+          (!state.owners || state.owners.length === 0)) {
+        console.warn('Warning: Attempting to save empty state - checking if intentional')
+        
+        // Only allow empty save if this is truly the first time (no lastSaveTime)
+        if (state.lastSaveTime > 0) {
+          console.error('BLOCKED: Preventing save of empty state when data previously existed')
+          return
+        }
+      }
+      
+      // Debounce saves to prevent rapid successive calls
+      if (saveDebounceTimer) {
+        clearTimeout(saveDebounceTimer)
+      }
+      
+      saveDebounceTimer = setTimeout(async () => {
+        try {
+          console.log('Saving data to server...')
+          
+          // Only send the data we need, not the loading flags
+          const dataToSave = {
+            todos: state.todos,
+            categories: state.categories,
+            owners: state.owners
+          }
+          
+          const response = await fetch('/api/todos/neon', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataToSave)
+          })
+          
+          if (!response.ok) {
+            const errorData = await response.json()
+            if (errorData.blocked) {
+              console.error('Server blocked the save:', errorData.error)
+              // Server prevented data loss - this is good!
+              return
+            }
+            throw new Error('Failed to save data to Neon')
+          }
+          
+          console.log('Successfully saved data to server')
+        } catch (error) {
+          console.error('Error saving data to Neon:', error)
+        }
+      }, SAVE_DEBOUNCE_MS)
+      
     } catch (error) {
-      console.error('Error saving data to Neon:', error)
+      console.error('Error in setItem:', error)
     }
   },
+  
   removeItem: async (name: string) => {
     // Not needed for our use case
   }
@@ -118,6 +197,7 @@ const colors = [
 const useTodoStore = create<TodoStore>()(
   persist(
     (set, get) => ({
+      // Initial state
       todos: [],
       categories: [],
       owners: [],
@@ -128,6 +208,20 @@ const useTodoStore = create<TodoStore>()(
         status: 'all' as FilterBy,
         sortBy: 'priority' as SortBy,
       },
+      
+      // Loading state - critical for preventing race conditions
+      isLoading: true, // Start as loading
+      hasLoadedFromServer: false,
+      lastSaveTime: 0,
+      
+      // Internal state management
+      setLoadingState: (isLoading) => {
+        set({ isLoading })
+      },
+      
+      setHasLoadedFromServer: (hasLoaded) => {
+        set({ hasLoadedFromServer: hasLoaded })
+      },
 
       addTodo: (todoData) => {
         const newTodo: Todo = {
@@ -136,7 +230,10 @@ const useTodoStore = create<TodoStore>()(
           createdAt: new Date(),
           updatedAt: new Date(),
         }
-        set((state) => ({ todos: [...state.todos, newTodo] }))
+        set((state) => ({ 
+          todos: [...state.todos, newTodo],
+          lastSaveTime: Date.now()
+        }))
       },
 
       updateTodo: (id, todoData) => {
@@ -146,12 +243,14 @@ const useTodoStore = create<TodoStore>()(
               ? { ...todo, ...todoData, updatedAt: new Date() }
               : todo
           ),
+          lastSaveTime: Date.now()
         }))
       },
 
       deleteTodo: (id) => {
         set((state) => ({
           todos: state.todos.filter((todo) => todo.id !== id),
+          lastSaveTime: Date.now()
         }))
       },
 
@@ -167,6 +266,7 @@ const useTodoStore = create<TodoStore>()(
                 }
               : todo
           ),
+          lastSaveTime: Date.now()
         }))
       },
 
@@ -181,7 +281,7 @@ const useTodoStore = create<TodoStore>()(
             todos.splice(overIndex, 0, removed)
           }
 
-          return { todos }
+          return { todos, lastSaveTime: Date.now() }
         })
       },
 
@@ -277,7 +377,8 @@ const useTodoStore = create<TodoStore>()(
             todo.id === todoId
               ? { ...todo, subtasks: [...(todo.subtasks || []), newSubtask], updatedAt: new Date() }
               : todo
-          )
+          ),
+          lastSaveTime: Date.now()
         }))
       },
 
@@ -293,7 +394,8 @@ const useTodoStore = create<TodoStore>()(
                   updatedAt: new Date()
                 }
               : todo
-          )
+          ),
+          lastSaveTime: Date.now()
         }))
       },
 
@@ -307,7 +409,8 @@ const useTodoStore = create<TodoStore>()(
                   updatedAt: new Date()
                 }
               : todo
-          )
+          ),
+          lastSaveTime: Date.now()
         }))
       },
 
@@ -323,7 +426,8 @@ const useTodoStore = create<TodoStore>()(
                   updatedAt: new Date()
                 }
               : todo
-          )
+          ),
+          lastSaveTime: Date.now()
         }))
       },
 
@@ -334,7 +438,8 @@ const useTodoStore = create<TodoStore>()(
             todo.id === todoId
               ? { ...todo, notes, updatedAt: new Date() }
               : todo
-          )
+          ),
+          lastSaveTime: Date.now()
         }))
       },
 
@@ -345,7 +450,10 @@ const useTodoStore = create<TodoStore>()(
           name,
           color: colors[0], // Will be updated immediately by the modal
         }
-        set((state) => ({ categories: [...state.categories, newCategory] }))
+        set((state) => ({ 
+          categories: [...state.categories, newCategory],
+          lastSaveTime: Date.now()
+        }))
       },
 
       updateCategory: (id, name, color) => {
@@ -353,12 +461,14 @@ const useTodoStore = create<TodoStore>()(
           categories: state.categories.map((cat) =>
             cat.id === id ? { ...cat, name, color } : cat
           ),
+          lastSaveTime: Date.now()
         }))
       },
 
       deleteCategory: (id) => {
         set((state) => ({
           categories: state.categories.filter((cat) => cat.id !== id),
+          lastSaveTime: Date.now()
         }))
       },
 
@@ -369,7 +479,10 @@ const useTodoStore = create<TodoStore>()(
           name,
           color: colors[0], // Will be updated immediately by the modal
         }
-        set((state) => ({ owners: [...state.owners, newOwner] }))
+        set((state) => ({ 
+          owners: [...state.owners, newOwner],
+          lastSaveTime: Date.now()
+        }))
       },
 
       updateOwner: (id, name, color) => {
@@ -377,12 +490,14 @@ const useTodoStore = create<TodoStore>()(
           owners: state.owners.map((owner) =>
             owner.id === id ? { ...owner, name, color } : owner
           ),
+          lastSaveTime: Date.now()
         }))
       },
 
       deleteOwner: (id) => {
         set((state) => ({
           owners: state.owners.filter((owner) => owner.id !== id),
+          lastSaveTime: Date.now()
         }))
       },
     }),
@@ -393,7 +508,12 @@ const useTodoStore = create<TodoStore>()(
         todos: state.todos,
         categories: state.categories,
         owners: state.owners,
+        isLoading: state.isLoading,
+        hasLoadedFromServer: state.hasLoadedFromServer,
+        lastSaveTime: state.lastSaveTime
       }),
+      // Skip hydration on mount to manually control it
+      skipHydration: false, // We'll keep automatic hydration but with better state management
     }
   )
 )

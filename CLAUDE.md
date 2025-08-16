@@ -160,21 +160,38 @@ admin_squarage/
 
 ## Important Implementation Details
 
-### Data Persistence (Database with Fallback)
-The application uses Neon PostgreSQL as primary storage with JSON fallback:
+### Data Persistence & Safety (CRITICAL)
+The application uses Neon PostgreSQL with multiple layers of data loss protection:
+
+#### Protection Mechanisms
+1. **UPSERT Pattern**: Database uses safe UPSERT operations, not DELETE-then-INSERT
+2. **Empty State Validation**: Server blocks any attempt to delete all data
+3. **Loading State Management**: Client won't save until data is loaded from server
+4. **Save Debouncing**: 1-second delay prevents rapid successive saves
+5. **State-Based Flags**: `isLoading` and `hasLoadedFromServer` tracked in store state
+
 ```typescript
-// lib/store.ts - Dual storage system
+// lib/store.ts - Protected storage system
 const apiStorage = {
   getItem: async (name: string) => {
-    // Try Neon endpoint first, fallback to JSON
-    const endpoints = ['/api/todos/neon', '/api/todos']
-    for (const endpoint of endpoints) {
-      const response = await fetch(endpoint)
-      if (response.ok) return data
+    // Loads from Neon with proper state flags
+    const data = await fetch('/api/todos/neon')
+    return {
+      ...data,
+      isLoading: false,
+      hasLoadedFromServer: true,
+      lastSaveTime: Date.now()
     }
   },
   setItem: async (name: string, value: string) => {
-    // Saves to Neon database or JSON file
+    // Multiple safety checks before saving
+    if (state.isLoading) return // Don't save while loading
+    if (!state.hasLoadedFromServer) return // Don't save before initial load
+    if (isEmpty(state) && state.lastSaveTime > 0) return // Block empty saves
+    
+    // Debounced save to Neon (1 second delay)
+    clearTimeout(saveTimer)
+    saveTimer = setTimeout(() => saveToDB(), 1000)
   }
 }
 ```
