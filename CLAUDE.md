@@ -6,12 +6,14 @@ An admin dashboard for Squarage company built with Next.js 14, TypeScript, and T
 ## Tech Stack
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
+- **Database**: Neon PostgreSQL (Serverless)
+- **ORM**: Drizzle ORM
 - **Styling**: Tailwind CSS with custom Squarage brand colors
-- **State Management**: Zustand with persistence
+- **State Management**: Zustand with database persistence
 - **Drag & Drop**: @dnd-kit/sortable
 - **Icons**: Lucide React
 - **Date Handling**: date-fns
-- **Deployment**: Vercel-ready configuration
+- **Deployment**: Vercel with Neon integration
 
 ## Project Structure
 ```
@@ -22,7 +24,9 @@ admin_squarage/
 │   ├── page.tsx              # Dashboard homepage
 │   ├── api/
 │   │   └── todos/
-│   │       └── route.ts      # API endpoint for todo persistence
+│   │       ├── route.ts      # Legacy JSON file API endpoint
+│   │       └── neon/
+│   │           └── route.ts  # Neon database API endpoint
 │   └── todo/
 │       └── page.tsx          # Full-page todo view
 ├── components/
@@ -45,9 +49,17 @@ admin_squarage/
 ├── lib/
 │   ├── store.ts                 # Zustand store configuration
 │   ├── types.ts                 # TypeScript interfaces
-│   └── utils.ts                 # Utility functions
+│   ├── utils.ts                 # Utility functions
+│   └── db/
+│       ├── index.ts            # Neon database connection
+│       └── schema.ts           # Drizzle ORM schema
+├── scripts/
+│   ├── migrate-data.ts         # Migrate JSON to Neon
+│   ├── push-schema.ts          # Create database tables
+│   └── seed-test-data.ts       # Seed test data
 ├── data/
-│   └── todos.json              # File-based data storage
+│   └── todos.json              # Legacy file storage (fallback)
+├── drizzle.config.ts           # Drizzle ORM configuration
 ├── Style/                       # Branding assets
 │   ├── STYLE_GUIDE.md          # Complete style guide
 │   └── fonts/                  # Neue Haas Grotesk fonts
@@ -78,7 +90,7 @@ admin_squarage/
 - **Sorting**: By due date, priority, category, owner, or creation date
 - **Filtering**: By status, category, owner, priority
 - **Auto-organization**: Completed tasks move to bottom
-- **Persistent Storage**: Uses API endpoint with file-based storage
+- **Persistent Storage**: Neon PostgreSQL with automatic fallback to JSON
 
 ### Subtask & Notes System
 - **Expandable Interface**: Click on task title or subtask counter to expand
@@ -129,7 +141,12 @@ admin_squarage/
   - Due Date (120px)
   - Actions (32px)
 
-### Design System
+### Glassmorphism Design System
+- **Glass Effects**:
+  - Backdrop blur for depth
+  - Semi-transparent backgrounds (white/35-50%)
+  - Subtle borders with white/40-60% opacity
+  - Hover animations with scale and shadow
 - **Brand Colors**:
   - Squarage Green: `#4A9B4E`
   - Squarage Orange: `#F7901E`
@@ -143,24 +160,35 @@ admin_squarage/
 
 ## Important Implementation Details
 
-### Data Persistence (API Storage)
-The application uses a file-based API for data persistence:
+### Data Persistence (Database with Fallback)
+The application uses Neon PostgreSQL as primary storage with JSON fallback:
 ```typescript
-// lib/store.ts - Custom API storage
+// lib/store.ts - Dual storage system
 const apiStorage = {
   getItem: async (name: string) => {
-    const response = await fetch('/api/todos')
-    // Fetches from data/todos.json
+    // Try Neon endpoint first, fallback to JSON
+    const endpoints = ['/api/todos/neon', '/api/todos']
+    for (const endpoint of endpoints) {
+      const response = await fetch(endpoint)
+      if (response.ok) return data
+    }
   },
   setItem: async (name: string, value: string) => {
-    await fetch('/api/todos', {
-      method: 'POST',
-      // Saves to data/todos.json
-    })
+    // Saves to Neon database or JSON file
   }
 }
 ```
-**CRITICAL**: Always use API storage for server persistence. Never switch to localStorage.
+
+### Database Schema (Neon PostgreSQL)
+```sql
+- categories (id, name, color, created_at)
+- owners (id, name, color, created_at)
+- todos (id, title, category, owner, priority, status, due_date, completed, notes, created_at, updated_at)
+- subtasks (id, todo_id, text, completed, created_at)
+```
+
+**Database Connection**: Configured via `DATABASE_URL` environment variable
+**Fallback**: Automatically uses JSON file if database is unavailable
 
 ### Todo Data Structure
 ```typescript
@@ -222,13 +250,27 @@ npm run dev      # Start development server
 npm run build    # Build for production
 npm run start    # Start production server
 npm run lint     # Run ESLint
+
+# Database commands
+npm run db:push         # Push schema to Neon
+npm run db:studio       # Open Drizzle Studio
+npm run db:migrate-data # Migrate JSON to database
+npx tsx scripts/seed-test-data.ts  # Seed test data
 ```
 
 ## Deployment
-The project is configured for Vercel deployment:
-1. Push to GitHub
-2. Connect repository to Vercel
-3. Deploy automatically (vercel.json included)
+The project is configured for Vercel deployment with Neon:
+1. Create Neon account at https://neon.tech
+2. Add `DATABASE_URL` to Vercel environment variables
+3. Push to GitHub
+4. Connect repository to Vercel
+5. Deploy automatically with database support
+
+### Environment Variables
+```bash
+# .env.local
+DATABASE_URL=postgresql://user:pass@host/dbname?sslmode=require
+```
 
 ## Future Enhancements (Placeholders Exist)
 - **Notes Widget**: Quick notes and documentation
@@ -239,9 +281,11 @@ The project is configured for Vercel deployment:
 ## Known Considerations
 1. **Hydration**: TodoWidget uses `isHydrated` state to prevent SSR/CSR mismatches
 2. **Color Management**: Colors are stored in both store.ts and CategoryOwnerEditModal
-3. **Data Persistence**: Uses API endpoint that saves to `data/todos.json`
+3. **Data Persistence**: Uses Neon PostgreSQL with automatic JSON fallback
 4. **Font Loading**: Custom fonts loaded via local files in Style/fonts
-5. **Sample Data**: When todos are lost, restore from backup in conversation history
+5. **Database Transactions**: Neon HTTP driver doesn't support transactions
+6. **Dropdown Portals**: Uses React portals to escape container overflow
+7. **Priority-based Colors**: Task backgrounds use priority colors instead of category
 
 ## Component Communication
 - **Props Flow**: Minimal prop drilling, most state in Zustand
@@ -303,4 +347,21 @@ This dashboard is production-ready and deployed on Vercel. The todo list is full
 - Full-width strikethrough for completed/dead tasks
 - Enhanced color fading for better visual hierarchy
 - Improved grid layout with precise column widths
-- Background color inheritance from task categories
+- Background colors based on task priority (not category)
+- Glassmorphism design with backdrop blur and transparency
+- Glass pane buttons with hover effects
+- Solid green header (gradient removed)
+
+### Neon Database Integration (August 2025)
+- Migrated from JSON file storage to Neon PostgreSQL
+- Serverless database with automatic scaling
+- Drizzle ORM for type-safe database operations
+- Automatic fallback to JSON if database unavailable
+- Database branching support for preview deployments
+- Connection pooling via Neon pooler endpoint
+
+### Sorting & Filtering Improvements (August 2025)
+- Primary sort by selected column (priority by default)
+- Secondary sort always by due date (soonest to latest)
+- Tasks without due dates appear after tasks with dates
+- Maintains separation of active/completed/dead tasks
