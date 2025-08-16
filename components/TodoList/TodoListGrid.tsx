@@ -62,10 +62,14 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
     addOwner,
     updateOwner,
     deleteOwner,
+    rehydrate,
   } = useTodoStore()
 
   useEffect(() => {
     setIsHydrated(true)
+    // Manually trigger hydration ONLY after component mounts
+    // This prevents the store from saving empty state on initial load
+    rehydrate()
   }, [])
 
   useEffect(() => {

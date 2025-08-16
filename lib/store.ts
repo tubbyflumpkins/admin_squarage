@@ -45,7 +45,13 @@ interface TodoStore {
   // Internal state management
   setLoadingState: (isLoading: boolean) => void
   setHasLoadedFromServer: (hasLoaded: boolean) => void
+  
+  // Manual hydration
+  rehydrate: () => Promise<void>
 }
+
+// Track if we've already started hydration to prevent double-loading
+let hydrationStarted = false
 
 // Debounce timer for saves
 let saveDebounceTimer: NodeJS.Timeout | null = null
@@ -74,20 +80,6 @@ const apiStorage = {
       return JSON.stringify({
         state: {
           ...data,
-          isLoading: false,
-          hasLoadedFromServer: true,
-          lastSaveTime: Date.now()
-        },
-        version: 0
-      })
-    } catch (error) {
-      console.error('Error loading data from Neon:', error)
-      // Return null but with proper flags
-      return JSON.stringify({
-        state: {
-          todos: [],
-          categories: [],
-          owners: [],
           filters: {
             category: undefined,
             owner: undefined,
@@ -96,11 +88,15 @@ const apiStorage = {
             sortBy: 'priority' as SortBy,
           },
           isLoading: false,
-          hasLoadedFromServer: false,
-          lastSaveTime: 0
+          hasLoadedFromServer: true,
+          lastSaveTime: Date.now()
         },
         version: 0
       })
+    } catch (error) {
+      console.error('Error loading data from Neon:', error)
+      // Return null but with proper flags - DO NOT return empty arrays
+      return null
     }
   },
   
@@ -136,6 +132,9 @@ const apiStorage = {
           console.error('BLOCKED: Preventing save of empty state when data previously existed')
           return
         }
+        
+        // Even for first time, be cautious
+        console.warn('Empty state save - this better be intentional!')
       }
       
       // Debounce saves to prevent rapid successive calls
@@ -197,7 +196,7 @@ const colors = [
 const useTodoStore = create<TodoStore>()(
   persist(
     (set, get) => ({
-      // Initial state
+      // Initial state - DO NOT set empty arrays here
       todos: [],
       categories: [],
       owners: [],
@@ -213,6 +212,22 @@ const useTodoStore = create<TodoStore>()(
       isLoading: true, // Start as loading
       hasLoadedFromServer: false,
       lastSaveTime: 0,
+      
+      // Manual hydration
+      rehydrate: async () => {
+        // Prevent double hydration
+        if (hydrationStarted) {
+          console.log('Hydration already started, skipping...')
+          return
+        }
+        hydrationStarted = true
+        
+        const store = get()
+        if (!store.hasLoadedFromServer) {
+          console.log('Starting manual hydration...')
+          await (store as any).persist.rehydrate()
+        }
+      },
       
       // Internal state management
       setLoadingState: (isLoading) => {
@@ -512,8 +527,8 @@ const useTodoStore = create<TodoStore>()(
         hasLoadedFromServer: state.hasLoadedFromServer,
         lastSaveTime: state.lastSaveTime
       }),
-      // Skip hydration on mount to manually control it
-      skipHydration: false, // We'll keep automatic hydration but with better state management
+      // CRITICAL: Skip automatic hydration to prevent saving empty state on mount
+      skipHydration: true,
     }
   )
 )
