@@ -18,9 +18,10 @@ interface TodoItemProps {
   onToggle: (id: string) => void
   onDelete: (id: string) => void
   onEdit: (todo: Todo) => void
+  isWidget?: boolean
 }
 
-export default function TodoItem({ todo, onToggle, onDelete, onEdit }: TodoItemProps) {
+export default function TodoItem({ todo, onToggle, onDelete, onEdit, isWidget = false }: TodoItemProps) {
   const { categories, owners, updateTodo } = useTodoStore()
   const [editingTitle, setEditingTitle] = useState(false)
   const [editingDate, setEditingDate] = useState(false)
@@ -141,11 +142,75 @@ export default function TodoItem({ todo, onToggle, onDelete, onEdit }: TodoItemP
   const completedSubtasks = todo.subtasks?.filter(s => s.completed).length || 0
   const totalSubtasks = todo.subtasks?.length || 0
   
-  // Handle title click for expansion - always allow expansion
+  // Handle title click for expansion - only in non-widget mode
   const handleTitleClick = () => {
-    setIsExpanded(!isExpanded)
+    if (!isWidget) {
+      setIsExpanded(!isExpanded)
+    }
   }
 
+  // Simplified widget mode rendering
+  if (isWidget) {
+    return (
+      <div
+        className={cn(
+          'transition-all duration-200 relative',
+          currentStatus === 'completed' && 'bg-green-200/80',
+          currentStatus === 'dead' && 'bg-red-200/80'
+        )}
+        style={{
+          backgroundColor: currentStatus === 'completed' ? undefined : 
+                          currentStatus === 'dead' ? undefined : 
+                          priorityBgColor
+        }}
+      >
+        <div className="grid grid-cols-[80px_1fr_80px] text-sm relative">
+          {/* Strike-through line for completed and dead tasks */}
+          {(currentStatus === 'completed' || currentStatus === 'dead') && (
+            <div 
+              className={cn(
+                "absolute top-1/2 left-0 right-0 h-0.5 -translate-y-1/2 pointer-events-none z-10",
+                currentStatus === 'completed' ? 'bg-green-700' : 'bg-red-700'
+              )}
+            />
+          )}
+          
+          {/* Status */}
+          <div className="px-2 py-1 flex items-center justify-center">
+            <StatusDropdown
+              value={currentStatus}
+              onChange={handleStatusChange}
+              compact
+            />
+          </div>
+          
+          {/* Title */}
+          <div 
+            className={cn(
+              'px-2 py-1 flex items-center border-l border-brown-light/20 font-semibold',
+              currentStatus === 'completed' && 'text-green-900',
+              currentStatus === 'dead' && 'text-red-900',
+              (currentStatus === 'not_started' || currentStatus === 'in_progress') && 'text-squarage-black'
+            )}
+          >
+            <span className="w-full truncate">{todo.title}</span>
+          </div>
+          
+          {/* Priority */}
+          <div className="px-2 py-1 flex items-center justify-center border-l border-brown-light/20">
+            <PriorityDropdown
+              value={todo.priority}
+              onChange={handlePriorityChange}
+              className="w-full"
+              compact
+            />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Full mode rendering
   return (
     <div
       ref={setNodeRef}

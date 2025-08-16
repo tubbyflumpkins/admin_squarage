@@ -30,11 +30,12 @@ interface TodoListGridProps {
   isFullPage?: boolean
   containerHeight?: string
   isGlassView?: boolean
+  isWidget?: boolean
 }
 
 type SortDirection = 'asc' | 'desc' | null
 
-export default function TodoListGrid({ isFullPage = false, containerHeight = '400px', isGlassView = false }: TodoListGridProps) {
+export default function TodoListGrid({ isFullPage = false, containerHeight = '400px', isGlassView = false, isWidget = false }: TodoListGridProps) {
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [showBothModals, setShowBothModals] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
@@ -151,38 +152,52 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        {isGlassView ? (
+      {isWidget ? (
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-white">Todo List</h2>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between mb-4">
+          {isGlassView ? (
+            <button
+              onClick={handleAddNew}
+              disabled={isAddingNew}
+              className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/50 rounded-xl border border-white/60 text-squarage-black font-medium hover:bg-white/65 hover:scale-105 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 transform shadow-lg"
+            >
+              <Plus size={18} className="text-squarage-black" />
+              <span>Add Task</span>
+            </button>
+          ) : (
+            <Button
+              onClick={handleAddNew}
+              size="sm"
+              className="flex items-center gap-2"
+              disabled={isAddingNew}
+            >
+              <Plus size={18} />
+              Add Task
+            </Button>
+          )}
           <button
-            onClick={handleAddNew}
-            disabled={isAddingNew}
+            onClick={() => setShowBothModals(true)}
             className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/50 rounded-xl border border-white/60 text-squarage-black font-medium hover:bg-white/65 hover:scale-105 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 transform shadow-lg"
+            title="Manage Categories & Owners"
           >
-            <Plus size={18} className="text-squarage-black" />
-            <span>Add Task</span>
+            <Settings2 size={18} className="text-squarage-black" />
+            <span>Settings</span>
           </button>
-        ) : (
-          <Button
-            onClick={handleAddNew}
-            size="sm"
-            className="flex items-center gap-2"
-            disabled={isAddingNew}
-          >
-            <Plus size={18} />
-            Add Task
-          </Button>
-        )}
-        <button
-          onClick={() => setShowBothModals(true)}
-          className="p-2 text-white hover:text-squarage-yellow transition-colors"
-          title="Manage Categories & Owners"
-        >
-          <Settings2 size={20} />
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* Column Headers */}
       <div className="bg-squarage-white/50 rounded-t-lg border border-brown-light/30">
+        {isWidget ? (
+          <div className="grid grid-cols-[80px_1fr_80px] text-xs font-medium text-brown-medium uppercase tracking-wider">
+            <div className="px-2 py-1.5 text-center">Status</div>
+            <div className="px-2 py-1.5 border-l border-brown-light/20">Title</div>
+            <div className="px-2 py-1.5 text-center border-l border-brown-light/20">Priority</div>
+          </div>
+        ) : (
         <div className="grid grid-cols-[14px_110px_1fr_30px_100px_100px_80px_120px_32px] text-xs font-medium text-brown-medium uppercase tracking-wider">
           <div className="px-2 py-1.5" /> {/* Space for drag handle */}
           <div className="px-2 py-1.5 text-center border-l border-brown-light/20">Status</div>
@@ -235,12 +250,12 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
           
           <div className="px-2 py-1.5 border-l border-brown-light/20" /> {/* Space for actions */}
         </div>
+        )}
       </div>
 
       <div 
         className={cn(
           "border-x border-b border-brown-light/30 rounded-b-lg bg-squarage-white",
-          isFullPage && "max-h-[calc(100vh-250px)] overflow-y-auto scrollbar-thin",
           !isFullPage && "overflow-y-auto scrollbar-thin"
         )}
         style={{ height: isFullPage ? 'auto' : containerHeight }}
@@ -265,13 +280,14 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
                 </div>
               )}
               
-              {sortedTodos.map((todo) => (
+              {(isWidget ? sortedTodos.slice(0, 5) : sortedTodos).map((todo) => (
                 <div key={todo.id} className="hover:bg-squarage-white/30">
                   <TodoItem
                     todo={todo}
                     onToggle={toggleComplete}
                     onDelete={deleteTodo}
                     onEdit={() => {}}
+                    isWidget={isWidget}
                   />
                 </div>
               ))}
@@ -304,64 +320,46 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
       {/* Both modals side by side with frosted glass overlay - using portal */}
       {showBothModals && isHydrated && createPortal(
         <>
-          {/* Full screen frosted glass overlay with click handler */}
+          {/* Full screen overlay - clicking anywhere on this closes modals */}
           <div 
             className="fixed inset-0 bg-white/20 backdrop-blur-xl z-40"
-            onClick={(e) => {
-              // Check if click is directly on the overlay (not bubbled from children)
-              if (e.target === e.currentTarget) {
-                setShowBothModals(false)
-              }
-            }}
-          >
-            {/* Modal content container - clicking anywhere here (including gaps) closes */}
-            <div 
-              className="relative w-full h-full flex items-start justify-center p-4 pt-24"
-              onClick={(e) => {
-                // Get the actual modal elements
-                const modals = e.currentTarget.querySelectorAll('.modal-content')
-                let clickedInModal = false
-                
-                // Check if click was inside any modal
-                modals.forEach(modal => {
-                  if (modal.contains(e.target as Node)) {
-                    clickedInModal = true
-                  }
-                })
-                
-                // Close if clicked outside all modals
-                if (!clickedInModal) {
-                  setShowBothModals(false)
-                }
-              }}
-            >
-              <div className="flex gap-4 max-w-5xl w-full">
-                {/* Categories Modal */}
-                <div className="flex-1 modal-content">
-                  <CategoryOwnerEditModal
-                    isOpen={true}
-                    onClose={() => setShowBothModals(false)}
-                    type="category"
-                    items={categories}
-                    onAdd={addCategory}
-                    onUpdate={updateCategory}
-                    onDelete={deleteCategory}
-                    isInline={true}
-                  />
-                </div>
-                {/* Owners Modal */}
-                <div className="flex-1 modal-content">
-                  <CategoryOwnerEditModal
-                    isOpen={true}
-                    onClose={() => setShowBothModals(false)}
-                    type="owner"
-                    items={owners}
-                    onAdd={addOwner}
-                    onUpdate={updateOwner}
-                    onDelete={deleteOwner}
-                    isInline={true}
-                  />
-                </div>
+            onClick={() => setShowBothModals(false)}
+          />
+          
+          {/* Modal container - no pointer events, just for positioning */}
+          <div className="fixed inset-0 flex items-start justify-center z-50 p-4 pt-24 pointer-events-none">
+            <div className="flex gap-4 max-w-5xl w-full">
+              {/* Categories Modal - only this div has pointer events */}
+              <div 
+                className="flex-1 pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <CategoryOwnerEditModal
+                  isOpen={true}
+                  onClose={() => setShowBothModals(false)}
+                  type="category"
+                  items={categories}
+                  onAdd={addCategory}
+                  onUpdate={updateCategory}
+                  onDelete={deleteCategory}
+                  isInline={true}
+                />
+              </div>
+              {/* Owners Modal - only this div has pointer events */}
+              <div 
+                className="flex-1 pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <CategoryOwnerEditModal
+                  isOpen={true}
+                  onClose={() => setShowBothModals(false)}
+                  type="owner"
+                  items={owners}
+                  onAdd={addOwner}
+                  onUpdate={updateOwner}
+                  onDelete={deleteOwner}
+                  isInline={true}
+                />
               </div>
             </div>
           </div>

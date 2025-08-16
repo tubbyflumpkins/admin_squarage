@@ -44,9 +44,24 @@ const apiStorage = {
     }
     
     try {
-      const response = await fetch('/api/todos')
-      if (!response.ok) throw new Error('Failed to fetch data')
-      const data = await response.json()
+      // Try Neon endpoint first, fallback to regular endpoint
+      const endpoints = ['/api/todos/neon', '/api/todos']
+      let data = null
+      
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint)
+          if (response.ok) {
+            data = await response.json()
+            break
+          }
+        } catch {
+          continue
+        }
+      }
+      
+      if (!data) throw new Error('Failed to fetch data from any endpoint')
+      
       return JSON.stringify({
         state: data,
         version: 0
@@ -64,12 +79,28 @@ const apiStorage = {
     
     try {
       const { state } = JSON.parse(value)
-      const response = await fetch('/api/todos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(state)
-      })
-      if (!response.ok) throw new Error('Failed to save data')
+      
+      // Try Neon endpoint first, fallback to regular endpoint
+      const endpoints = ['/api/todos/neon', '/api/todos']
+      let success = false
+      
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(state)
+          })
+          if (response.ok) {
+            success = true
+            break
+          }
+        } catch {
+          continue
+        }
+      }
+      
+      if (!success) throw new Error('Failed to save data to any endpoint')
     } catch (error) {
       console.error('Error saving data:', error)
     }
@@ -187,25 +218,45 @@ const useTodoStore = create<TodoStore>()(
         // Sort each group independently
         const sortTasks = (tasks: Todo[]) => {
           tasks.sort((a, b) => {
+            // Primary sort
+            let primaryResult = 0
+            
             switch (filters.sortBy) {
               case 'dueDate':
                 // Handle null dates - put them at the end
-                if (!a.dueDate && !b.dueDate) return 0
-                if (!a.dueDate) return 1
-                if (!b.dueDate) return -1
-                return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+                if (!a.dueDate && !b.dueDate) primaryResult = 0
+                else if (!a.dueDate) primaryResult = 1
+                else if (!b.dueDate) primaryResult = -1
+                else primaryResult = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+                break
               case 'priority':
                 const priorityOrder = { high: 0, medium: 1, low: 2 }
-                return priorityOrder[a.priority] - priorityOrder[b.priority]
+                primaryResult = priorityOrder[a.priority] - priorityOrder[b.priority]
+                break
               case 'category':
-                return a.category.localeCompare(b.category)
+                primaryResult = a.category.localeCompare(b.category)
+                break
               case 'owner':
-                return a.owner.localeCompare(b.owner)
+                primaryResult = a.owner.localeCompare(b.owner)
+                break
               case 'createdAt':
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                primaryResult = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                break
               default:
-                return 0
+                primaryResult = 0
             }
+            
+            // If primary sort is equal and we're not already sorting by due date, 
+            // apply due date as secondary sort
+            if (primaryResult === 0 && filters.sortBy !== 'dueDate') {
+              // Secondary sort by due date (soonest to latest)
+              if (!a.dueDate && !b.dueDate) return 0
+              if (!a.dueDate) return 1
+              if (!b.dueDate) return -1
+              return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+            }
+            
+            return primaryResult
           })
         }
 

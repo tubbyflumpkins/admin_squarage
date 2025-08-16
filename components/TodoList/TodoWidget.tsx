@@ -3,27 +3,26 @@
 import { useRouter } from 'next/navigation'
 import TodoListGrid from './TodoListGrid'
 
-interface TodoWidgetProps {
-  isFullPage?: boolean
-}
-
-export default function TodoWidget({ isFullPage = false }: TodoWidgetProps) {
+export default function TodoWidget() {
   const router = useRouter()
   
   return (
-    <div>
-      <TodoListGrid isFullPage={isFullPage} containerHeight={isFullPage ? 'calc(100vh - 200px)' : '350px'} />
+    <div 
+      className="relative backdrop-blur-md bg-white/35 rounded-2xl shadow-2xl border border-white/40 p-6 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:shadow-3xl"
+      onClick={() => router.push('/todo')}
+    >
+      {/* Overlay to prevent interactions with inner content */}
+      <div className="absolute inset-0 z-10 rounded-2xl" />
       
-      {!isFullPage && (
-        <div className="mt-4 pt-4 border-t border-brown-light/30">
-          <button
-            onClick={() => router.push('/todo')}
-            className="text-sm text-squarage-blue hover:text-squarage-green transition-colors font-medium"
-          >
-            View all tasks →
-          </button>
-        </div>
-      )}
+      {/* Content - not interactive due to overlay */}
+      <div className="relative">
+        <TodoListGrid 
+          isFullPage={false} 
+          containerHeight="auto" 
+          isGlassView 
+          isWidget 
+        />
+      </div>
     </div>
   )
 }
