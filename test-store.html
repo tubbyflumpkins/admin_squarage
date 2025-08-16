@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Store Loading</title>
+</head>
+<body>
+    <h1>Store Test</h1>
+    <div id="status">Loading...</div>
+    <div id="data"></div>
+    
+    <script type="module">
+        // Test if the store loads data correctly
+        const status = document.getElementById('status');
+        const dataDiv = document.getElementById('data');
+        
+        async function testStore() {
+            try {
+                // Call the API directly
+                const response = await fetch('/api/todos/neon');
+                const data = await response.json();
+                
+                status.textContent = 'Data loaded successfully!';
+                dataDiv.innerHTML = `
+                    <h2>Data from API:</h2>
+                    <p>Todos: ${data.todos?.length || 0}</p>
+                    <p>Categories: ${data.categories?.length || 0}</p>
+                    <p>Owners: ${data.owners?.length || 0}</p>
+                    <h3>Todos:</h3>
+                    <ul>
+                        ${data.todos?.map(t => `<li>${t.title} (${t.status})</li>`).join('') || '<li>No todos</li>'}
+                    </ul>
+                `;
+            } catch (error) {
+                status.textContent = 'Error loading data: ' + error.message;
+            }
+        }
+        
+        testStore();
+    </script>
+</body>
+</html>

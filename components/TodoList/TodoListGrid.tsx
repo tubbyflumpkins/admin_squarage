@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { Plus, Settings2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
-import useTodoStore from '@/lib/store'
+import useTodoStore from '@/lib/store-simple'
 import TodoItem from './TodoItem'
 import TodoItemEditable from './TodoItemEditable'
 import CategoryOwnerEditModal from './CategoryOwnerEditModal'
@@ -49,6 +49,7 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
     filters,
     isLoading,
     hasLoadedFromServer,
+    loadFromServer,
     addTodo,
     updateTodo,
     deleteTodo,
@@ -62,14 +63,12 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
     addOwner,
     updateOwner,
     deleteOwner,
-    rehydrate,
   } = useTodoStore()
 
   useEffect(() => {
     const loadData = async () => {
-      // Manually trigger hydration ONLY after component mounts
-      // This prevents the store from saving empty state on initial load
-      await rehydrate()
+      // Load data from server on mount
+      await loadFromServer()
       setIsHydrated(true)
     }
     loadData()

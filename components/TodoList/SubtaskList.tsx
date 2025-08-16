@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react'
 import { Subtask } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import SubtaskItem from './SubtaskItem'
-import useTodoStore from '@/lib/store'
+import useTodoStore from '@/lib/store-simple'
 
 interface SubtaskListProps {
   todoId: string

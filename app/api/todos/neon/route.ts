@@ -24,6 +24,15 @@ async function fallbackToJsonFile() {
 
 export async function GET() {
   try {
+    // Log environment info for debugging
+    console.log('GET /api/todos/neon - Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_URL_EXISTS: !!process.env.DATABASE_URL,
+      DATABASE_URL_LENGTH: process.env.DATABASE_URL?.length || 0,
+      IS_VERCEL: !!process.env.VERCEL,
+      VERCEL_ENV: process.env.VERCEL_ENV
+    })
+    
     // Check if database is configured
     if (!isDatabaseConfigured() || !db) {
       console.log('Database not configured, falling back to JSON file')
@@ -31,6 +40,8 @@ export async function GET() {
       return NextResponse.json(data)
     }
 
+    console.log('Database is configured, fetching data...')
+    
     // Fetch all data from database
     const [dbTodos, dbCategories, dbOwners, dbSubtasks] = await Promise.all([
       db.select().from(todos).orderBy(desc(todos.createdAt)),
@@ -73,6 +84,12 @@ export async function GET() {
       categories: dbCategories,
       owners: dbOwners
     }
+    
+    console.log('Data fetched successfully:', {
+      todos: transformedTodos.length,
+      categories: dbCategories.length,
+      owners: dbOwners.length
+    })
 
     return NextResponse.json(response)
   } catch (error) {

@@ -8,17 +8,19 @@ const getDatabaseUrl = () => {
     return process.env.DATABASE_URL
   }
   
-  // In development, try to load from .env.local
-  if (process.env.NODE_ENV === 'development') {
-    console.warn('DATABASE_URL not found. Please set it in .env.local')
-    // Return a placeholder to prevent immediate crashes during development
-    return ''
-  }
-  
-  throw new Error('DATABASE_URL environment variable is not set')
+  // Log warning but don't throw error - allow fallback to JSON
+  console.warn('DATABASE_URL not found. Database features will be disabled.')
+  return ''
 }
 
-const databaseUrl = getDatabaseUrl()
+// Safely get the database URL without throwing
+let databaseUrl = ''
+try {
+  databaseUrl = getDatabaseUrl()
+} catch (error) {
+  console.error('Error getting database URL:', error)
+  databaseUrl = ''
+}
 
 // Create the connection only if we have a valid URL
 export const sql = databaseUrl ? neon(databaseUrl) : null
