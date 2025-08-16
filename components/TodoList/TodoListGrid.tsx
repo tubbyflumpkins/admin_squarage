@@ -145,24 +145,13 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
   }
 
   // Show loading state while data is being fetched from server
-  if (!isHydrated || isLoading) {
+  // IMPORTANT: Check loading states BEFORE checking data
+  if (!isHydrated || !hasLoadedFromServer) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="text-white text-lg mb-2">Loading your tasks...</div>
           <div className="text-white/70 text-sm">Fetching data from server</div>
-        </div>
-      </div>
-    )
-  }
-  
-  // If we're hydrated but haven't loaded from server, show a different message
-  if (!hasLoadedFromServer && todos.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="text-white text-lg mb-2">Connecting to database...</div>
-          <div className="text-white/70 text-sm">Please wait</div>
         </div>
       </div>
     )
