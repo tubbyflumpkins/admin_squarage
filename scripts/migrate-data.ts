@@ -28,64 +28,62 @@ async function migrateData() {
 
     console.log('Connected to Neon database')
 
-    // Start migration
-    await db.transaction(async (tx) => {
-      // Clear existing data (optional - remove if you want to append)
-      console.log('Clearing existing data...')
-      await tx.delete(subtasks)
-      await tx.delete(todos)
-      await tx.delete(categories)
-      await tx.delete(owners)
+    // Start migration (without transaction for neon-http)
+    // Clear existing data (optional - remove if you want to append)
+    console.log('Clearing existing data...')
+    await db.delete(subtasks)
+    await db.delete(todos)
+    await db.delete(categories)
+    await db.delete(owners)
 
-      // Migrate categories
-      if (data.categories && data.categories.length > 0) {
-        console.log(`Migrating ${data.categories.length} categories...`)
-        await tx.insert(categories).values(data.categories)
-      }
+    // Migrate categories
+    if (data.categories && data.categories.length > 0) {
+      console.log(`Migrating ${data.categories.length} categories...`)
+      await db.insert(categories).values(data.categories)
+    }
 
-      // Migrate owners
-      if (data.owners && data.owners.length > 0) {
-        console.log(`Migrating ${data.owners.length} owners...`)
-        await tx.insert(owners).values(data.owners)
-      }
+    // Migrate owners
+    if (data.owners && data.owners.length > 0) {
+      console.log(`Migrating ${data.owners.length} owners...`)
+      await db.insert(owners).values(data.owners)
+    }
 
-      // Migrate todos and subtasks
-      if (data.todos && data.todos.length > 0) {
-        console.log(`Migrating ${data.todos.length} todos...`)
+    // Migrate todos and subtasks
+    if (data.todos && data.todos.length > 0) {
+      console.log(`Migrating ${data.todos.length} todos...`)
+      
+      for (const todo of data.todos) {
+        const { subtasks: todoSubtasks, ...todoData } = todo
         
-        for (const todo of data.todos) {
-          const { subtasks: todoSubtasks, ...todoData } = todo
-          
-          // Insert todo
-          await tx.insert(todos).values({
-            id: todoData.id,
-            title: todoData.title,
-            category: todoData.category,
-            owner: todoData.owner,
-            priority: todoData.priority,
-            status: todoData.status,
-            dueDate: todoData.dueDate ? new Date(todoData.dueDate) : null,
-            completed: todoData.completed,
-            notes: todoData.notes || null,
-            createdAt: new Date(todoData.createdAt),
-            updatedAt: new Date(todoData.updatedAt)
-          })
+        // Insert todo
+        await db.insert(todos).values({
+          id: todoData.id,
+          title: todoData.title,
+          category: todoData.category,
+          owner: todoData.owner,
+          priority: todoData.priority,
+          status: todoData.status,
+          dueDate: todoData.dueDate ? new Date(todoData.dueDate) : null,
+          completed: todoData.completed,
+          notes: todoData.notes || null,
+          createdAt: new Date(todoData.createdAt),
+          updatedAt: new Date(todoData.updatedAt)
+        })
 
-          // Insert subtasks if they exist
-          if (todoSubtasks && todoSubtasks.length > 0) {
-            console.log(`  - Migrating ${todoSubtasks.length} subtasks for todo ${todoData.id}`)
-            await tx.insert(subtasks).values(
-              todoSubtasks.map((subtask: any) => ({
-                id: subtask.id,
-                todoId: todo.id,
-                text: subtask.text,
-                completed: subtask.completed
-              }))
-            )
-          }
+        // Insert subtasks if they exist
+        if (todoSubtasks && todoSubtasks.length > 0) {
+          console.log(`  - Migrating ${todoSubtasks.length} subtasks for todo ${todoData.id}`)
+          await db.insert(subtasks).values(
+            todoSubtasks.map((subtask: any) => ({
+              id: subtask.id,
+              todoId: todo.id,
+              text: subtask.text,
+              completed: subtask.completed
+            }))
+          )
         }
       }
-    })
+    }
 
     console.log('✅ Data migration completed successfully!')
     
