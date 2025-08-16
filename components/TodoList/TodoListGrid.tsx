@@ -31,36 +31,80 @@ interface TodoListGridProps {
   containerHeight?: string
   isGlassView?: boolean
   isWidget?: boolean
+  readOnly?: boolean  // New prop for read-only mode
 }
 
 type SortDirection = 'asc' | 'desc' | null
 
-export default function TodoListGrid({ isFullPage = false, containerHeight = '400px', isGlassView = false, isWidget = false }: TodoListGridProps) {
+export default function TodoListGrid({ isFullPage = false, containerHeight = '400px', isGlassView = false, isWidget = false, readOnly = false }: TodoListGridProps) {
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [showBothModals, setShowBothModals] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
   const [sortColumn, setSortColumn] = useState<SortBy>('priority')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [readOnlyData, setReadOnlyData] = useState<{ todos: Todo[], categories: any[], owners: any[] } | null>(null)
   
-  const {
-    todos,
-    categories,
-    owners,
-    filters,
-    addTodo,
-    updateTodo,
-    deleteTodo,
-    toggleComplete,
-    reorderTodos,
-    setFilter,
-    getFilteredTodos,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    addOwner,
-    updateOwner,
-    deleteOwner,
-  } = useTodoStore()
+  // Use Zustand store only if not in read-only mode
+  const storeData = useTodoStore()
+  
+  // In read-only mode, fetch data directly from API
+  useEffect(() => {
+    if (readOnly) {
+      const fetchData = async () => {
+        try {
+          const response = await fetch('/api/todos/neon')
+          if (response.ok) {
+            const data = await response.json()
+            setReadOnlyData(data)
+          }
+        } catch (error) {
+          console.error('Error fetching read-only data:', error)
+        }
+      }
+      fetchData()
+    }
+  }, [readOnly])
+  
+  // Use either read-only data or store data
+  const todos = readOnly ? (readOnlyData?.todos || []) : storeData.todos
+  const categories = readOnly ? (readOnlyData?.categories || []) : storeData.categories
+  const owners = readOnly ? (readOnlyData?.owners || []) : storeData.owners
+  const filters = readOnly ? { category: undefined, owner: undefined, status: undefined, priority: undefined, sortBy: 'dueDate' as SortBy } : storeData.filters
+  
+  // Store functions (disabled in read-only mode)
+  const addTodo = readOnly ? () => {} : storeData.addTodo
+  const updateTodo = readOnly ? () => {} : storeData.updateTodo
+  const deleteTodo = readOnly ? () => {} : storeData.deleteTodo
+  const toggleComplete = readOnly ? () => {} : storeData.toggleComplete
+  const reorderTodos = readOnly ? () => {} : storeData.reorderTodos
+  const setFilter = readOnly ? () => {} : storeData.setFilter
+  const getFilteredTodos = readOnly 
+    ? () => {
+        // Simple filtering for read-only mode
+        let filtered = [...todos]
+        // Sort by priority and status
+        filtered.sort((a, b) => {
+          // Completed and dead tasks go to bottom
+          if (a.status === 'completed' || a.status === 'dead') {
+            if (b.status !== 'completed' && b.status !== 'dead') return 1
+          }
+          if (b.status === 'completed' || b.status === 'dead') {
+            if (a.status !== 'completed' && a.status !== 'dead') return -1
+          }
+          
+          // Then sort by priority
+          const priorityOrder = { high: 0, medium: 1, low: 2 }
+          return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder]
+        })
+        return filtered
+      }
+    : storeData.getFilteredTodos
+  const addCategory = readOnly ? () => {} : storeData.addCategory
+  const updateCategory = readOnly ? () => {} : storeData.updateCategory
+  const deleteCategory = readOnly ? () => {} : storeData.deleteCategory
+  const addOwner = readOnly ? () => {} : storeData.addOwner
+  const updateOwner = readOnly ? () => {} : storeData.updateOwner
+  const deleteOwner = readOnly ? () => {} : storeData.deleteOwner
 
   useEffect(() => {
     setIsHydrated(true)
@@ -80,6 +124,7 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
   )
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (readOnly) return  // Disable drag in read-only mode
     const { active, over } = event
 
     if (over && active.id !== over.id) {
@@ -158,7 +203,10 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
         </div>
       ) : (
         <div className="flex items-center justify-between mb-4">
-          {isGlassView ? (
+          {readOnly ? (
+            // In read-only mode, show just a label
+            <div className="text-white/70 text-sm">View Only</div>
+          ) : isGlassView ? (
             <button
               onClick={handleAddNew}
               disabled={isAddingNew}
@@ -178,14 +226,16 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
               Add Task
             </Button>
           )}
-          <button
-            onClick={() => setShowBothModals(true)}
-            className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/50 rounded-xl border border-white/60 text-squarage-black font-medium hover:bg-white/65 hover:scale-105 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 transform shadow-lg"
-            title="Manage Categories & Owners"
-          >
-            <Settings2 size={18} className="text-squarage-black" />
-            <span>Settings</span>
-          </button>
+          {!readOnly && (
+            <button
+              onClick={() => setShowBothModals(true)}
+              className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/50 rounded-xl border border-white/60 text-squarage-black font-medium hover:bg-white/65 hover:scale-105 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 transform shadow-lg"
+              title="Manage Categories & Owners"
+            >
+              <Settings2 size={18} className="text-squarage-black" />
+              <span>Settings</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -270,7 +320,7 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
             strategy={verticalListSortingStrategy}
           >
             <div className="divide-y divide-brown-light/20">
-              {isAddingNew && (
+              {isAddingNew && !readOnly && (
                 <div className="hover:bg-squarage-white/30">
                   <TodoItemEditable
                     isNew
@@ -284,10 +334,11 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
                 <div key={todo.id} className="hover:bg-squarage-white/30">
                   <TodoItem
                     todo={todo}
-                    onToggle={toggleComplete}
-                    onDelete={deleteTodo}
+                    onToggle={readOnly ? () => {} : toggleComplete}
+                    onDelete={readOnly ? () => {} : deleteTodo}
                     onEdit={() => {}}
                     isWidget={isWidget}
+                    readOnly={readOnly}
                   />
                 </div>
               ))}

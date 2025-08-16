@@ -19,9 +19,10 @@ interface TodoItemProps {
   onDelete: (id: string) => void
   onEdit: (todo: Todo) => void
   isWidget?: boolean
+  readOnly?: boolean
 }
 
-export default function TodoItem({ todo, onToggle, onDelete, onEdit, isWidget = false }: TodoItemProps) {
+export default function TodoItem({ todo, onToggle, onDelete, onEdit, isWidget = false, readOnly = false }: TodoItemProps) {
   const { categories, owners, updateTodo } = useTodoStore()
   const [editingTitle, setEditingTitle] = useState(false)
   const [editingDate, setEditingDate] = useState(false)

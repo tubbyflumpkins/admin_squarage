@@ -21,6 +21,7 @@ export default function TodoWidget() {
           containerHeight="auto" 
           isGlassView 
           isWidget 
+          readOnly={true}  // Read-only mode to prevent database modifications
         />
       </div>
     </div>
