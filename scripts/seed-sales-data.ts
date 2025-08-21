@@ -23,7 +23,7 @@ async function seedSalesData() {
     const sampleSales = [
       {
         id: 'sale-1',
-        order: 'Custom Storage Unit - 10x10',
+        name: 'Custom Storage Unit - 10x10',
         placementDate: new Date('2024-01-15'),
         deliveryMethod: 'shipping' as const,
         status: 'fulfilled' as const,
@@ -33,7 +33,7 @@ async function seedSalesData() {
       },
       {
         id: 'sale-2',
-        order: 'Premium Storage Container - Climate Controlled',
+        name: 'Premium Storage Container - Climate Controlled',
         placementDate: new Date('2024-01-20'),
         deliveryMethod: 'local' as const,
         status: 'in_progress' as const,
@@ -43,7 +43,7 @@ async function seedSalesData() {
       },
       {
         id: 'sale-3',
-        order: 'Portable Storage Shed - 8x12',
+        name: 'Portable Storage Shed - 8x12',
         placementDate: new Date('2024-01-25'),
         deliveryMethod: 'shipping' as const,
         status: 'not_started' as const,
@@ -53,7 +53,7 @@ async function seedSalesData() {
       },
       {
         id: 'sale-4',
-        order: 'Mini Storage Locker Set (5 units)',
+        name: 'Mini Storage Locker Set (5 units)',
         placementDate: new Date('2024-01-18'),
         deliveryMethod: 'local' as const,
         status: 'fulfilled' as const,
@@ -63,7 +63,7 @@ async function seedSalesData() {
       },
       {
         id: 'sale-5',
-        order: 'Garage Organization System',
+        name: 'Garage Organization System',
         placementDate: new Date('2024-01-28'),
         deliveryMethod: 'shipping' as const,
         status: 'in_progress' as const,
@@ -76,7 +76,7 @@ async function seedSalesData() {
     // Insert sales
     for (const sale of sampleSales) {
       await db.insert(schema.sales).values(sale)
-      console.log(`✅ Created sale: ${sale.order}`)
+      console.log(`✅ Created sale: ${sale.name}`)
     }
 
     // Create sample subtasks
