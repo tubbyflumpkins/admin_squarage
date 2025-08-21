@@ -106,7 +106,14 @@ export default function TodoItem({ todo, onToggle, onDelete, onEdit, isWidget = 
   }
 
   const handleDateSave = () => {
-    updateTodo(todo.id, { dueDate: dateValue ? new Date(dateValue) : null })
+    if (dateValue) {
+      // Parse the date string and create a date at noon local time to avoid timezone shifts
+      const [year, month, day] = dateValue.split('-').map(Number)
+      const newDate = new Date(year, month - 1, day, 12, 0, 0) // month is 0-indexed, set to noon
+      updateTodo(todo.id, { dueDate: newDate })
+    } else {
+      updateTodo(todo.id, { dueDate: null })
+    }
     setEditingDate(false)
   }
 

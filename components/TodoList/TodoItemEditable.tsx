@@ -46,10 +46,17 @@ export default function TodoItemEditable({ todo, isNew = false, onSave, onCancel
     
     // Only save if minimum required fields are filled
     if (formData.title.trim() && formData.category && formData.owner) {
+      let dueDate = null
+      if (formData.dueDate) {
+        // Parse the date string and create a date at noon local time to avoid timezone shifts
+        const [year, month, day] = formData.dueDate.split('-').map(Number)
+        dueDate = new Date(year, month - 1, day, 12, 0, 0) // month is 0-indexed, set to noon
+      }
+      
       onSave({
         ...formData,
         completed: formData.status === 'completed',
-        dueDate: formData.dueDate ? new Date(formData.dueDate) : null,
+        dueDate,
       })
     }
   }, [formData, onSave, onCancel, isNew, isTaskBlank])
