@@ -111,7 +111,9 @@ export default function SalesItem({ sale, onEdit, onDelete, isGlassView = false 
   }
 
   const handleDateSave = () => {
-    const newDate = new Date(dateValue)
+    // Parse the date string and create a date at noon local time to avoid timezone shifts
+    const [year, month, day] = dateValue.split('-').map(Number)
+    const newDate = new Date(year, month - 1, day, 12, 0, 0) // month is 0-indexed, set to noon
     if (!isNaN(newDate.getTime())) {
       updateSale(sale.id, { placementDate: newDate })
     } else {

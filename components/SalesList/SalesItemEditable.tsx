@@ -47,9 +47,13 @@ export default function SalesItemEditable({ sale, isNew = false, onSave, onCance
     
     // Only save if minimum required fields are filled
     if (formData.name.trim()) {
+      // Parse the date string and create a date at noon local time to avoid timezone shifts
+      const [year, month, day] = formData.placementDate.split('-').map(Number)
+      const placementDate = new Date(year, month - 1, day, 12, 0, 0) // month is 0-indexed, set to noon
+      
       onSave({
         ...formData,
-        placementDate: new Date(formData.placementDate),
+        placementDate,
         notes: formData.notes || undefined,
         subtasks: sale?.subtasks || []
       })
