@@ -107,7 +107,7 @@ export default function SalesListGridReadOnly({ isWidget = false, containerHeigh
 
       {/* Column Headers */}
       <div className="bg-squarage-white/50 rounded-t-lg border border-brown-light/30">
-        <div className="grid grid-cols-[80px_1fr_100px_100px] text-xs font-medium text-brown-medium uppercase tracking-wider">
+        <div className="grid grid-cols-[100px_1fr_100px_100px] text-xs font-medium text-brown-medium uppercase tracking-wider">
           <div className="px-2 py-1.5 text-center">Status</div>
           <div className="px-2 py-1.5 border-l border-brown-light/20">Name</div>
           <div className="px-2 py-1.5 text-center border-l border-brown-light/20">Product</div>

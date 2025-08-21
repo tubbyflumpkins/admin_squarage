@@ -60,7 +60,7 @@ export default function SalesItemWidget({ sale, products, collections }: SalesIt
                         statusBgColor
       }}
     >
-      <div className="grid grid-cols-[80px_1fr_100px_100px] text-sm relative">
+      <div className="grid grid-cols-[100px_1fr_100px_100px] text-sm relative">
         {/* Strike-through line for dead sales only */}
         {currentStatus === 'dead' && (
           <div 
@@ -91,16 +91,16 @@ export default function SalesItemWidget({ sale, products, collections }: SalesIt
           <span className="w-full truncate">{sale.name}</span>
         </div>
 
-        {/* Product - Read only display with color */}
+        {/* Product - Read only display with selected color */}
         <div className="px-2 py-1 flex items-center justify-center border-l border-brown-light/20">
           {product ? (
             <span 
               className={cn(
                 "inline-block px-2 py-0.5 rounded text-xs font-medium truncate max-w-full",
-                collection?.color && collection.color !== '#FFFFFF' ? 'text-white' : 'text-gray-700'
+                sale.selectedColor && sale.selectedColor !== '#FFFFFF' ? 'text-white' : 'text-gray-700'
               )}
               style={{ 
-                backgroundColor: collection?.color || '#f3f4f6'
+                backgroundColor: sale.selectedColor || collection?.color || '#f3f4f6'
               }}
             >
               {product.name}
