@@ -3,9 +3,6 @@
 import { format } from 'date-fns'
 import { Sale, Product, Collection, SaleStatus } from '@/lib/salesTypes'
 import { cn, hexToPastel } from '@/lib/utils'
-import SalesStatusDropdown from './SalesStatusDropdown'
-import ProductDropdown from './ProductDropdown'
-import useSalesStore from '@/lib/salesStore'
 
 interface SalesItemWidgetProps {
   sale: Sale
@@ -14,10 +11,9 @@ interface SalesItemWidgetProps {
 }
 
 export default function SalesItemWidget({ sale, products, collections }: SalesItemWidgetProps) {
-  const updateSale = useSalesStore(state => state.updateSale)
-  
-  // Get product details
+  // Get product and collection details
   const product = products.find(p => p.id === sale.productId)
+  const collection = product ? collections.find(c => c.id === product.collectionId) : null
 
   // Status colors for background - matching SalesItem exactly
   const statusColors = {
@@ -29,9 +25,26 @@ export default function SalesItemWidget({ sale, products, collections }: SalesIt
 
   const currentStatus = sale.status
   const statusBgColor = hexToPastel(statusColors[currentStatus])
-
-  const handleStatusChange = (newStatus: SaleStatus) => {
-    updateSale(sale.id, { status: newStatus })
+  
+  // Get status display info
+  const getStatusLabel = (status: SaleStatus) => {
+    switch (status) {
+      case 'not_started': return 'Not Started'
+      case 'in_progress': return 'In Progress'
+      case 'fulfilled': return 'Fulfilled'
+      case 'dead': return 'Dead'
+      default: return 'Unknown'
+    }
+  }
+  
+  const getStatusColors = (status: SaleStatus) => {
+    switch (status) {
+      case 'not_started': return 'bg-red-400 text-white'
+      case 'in_progress': return 'bg-squarage-yellow text-squarage-black'
+      case 'fulfilled': return 'bg-squarage-green text-white'
+      case 'dead': return 'bg-gray-600 text-white'
+      default: return 'bg-gray-100 text-gray-700'
+    }
   }
 
   return (
@@ -58,13 +71,14 @@ export default function SalesItemWidget({ sale, products, collections }: SalesIt
           />
         )}
         
-        {/* Status */}
+        {/* Status - Read only display */}
         <div className="px-2 py-1 flex items-center justify-center">
-          <SalesStatusDropdown
-            value={currentStatus}
-            onChange={handleStatusChange}
-            compact
-          />
+          <span className={cn(
+            "inline-block px-1.5 py-0.5 rounded text-xs font-medium",
+            getStatusColors(currentStatus)
+          )}>
+            {getStatusLabel(currentStatus)}
+          </span>
         </div>
 
         {/* Name */}
@@ -77,13 +91,23 @@ export default function SalesItemWidget({ sale, products, collections }: SalesIt
           <span className="w-full truncate">{sale.name}</span>
         </div>
 
-        {/* Product */}
+        {/* Product - Read only display with color */}
         <div className="px-2 py-1 flex items-center justify-center border-l border-brown-light/20">
-          <ProductDropdown
-            value={sale.productId || ''}
-            onChange={(productId) => updateSale(sale.id, { productId })}
-            compact
-          />
+          {product ? (
+            <span 
+              className={cn(
+                "inline-block px-2 py-0.5 rounded text-xs font-medium truncate max-w-full",
+                collection?.color && collection.color !== '#FFFFFF' ? 'text-white' : 'text-gray-700'
+              )}
+              style={{ 
+                backgroundColor: collection?.color || '#f3f4f6'
+              }}
+            >
+              {product.name}
+            </span>
+          ) : (
+            <span className="text-gray-400 text-xs">-</span>
+          )}
         </div>
 
         {/* Date Placed */}
