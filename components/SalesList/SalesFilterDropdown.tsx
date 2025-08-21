@@ -87,12 +87,6 @@ export default function SalesFilterDropdown({
            type === 'color' && selectedOption ? 'Color' : 
            label}
         </span>
-        {type === 'color' && selectedOption && (
-          <div 
-            className="w-4 h-4 rounded border border-gray-400 flex-shrink-0"
-            style={{ backgroundColor: selectedOption.color }}
-          />
-        )}
       </button>
 
       {isOpen && type === 'product' && (
