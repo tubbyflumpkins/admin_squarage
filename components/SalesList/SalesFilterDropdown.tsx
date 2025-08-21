@@ -71,12 +71,12 @@ export default function SalesFilterDropdown({
           isOpen && "bg-squarage-green text-white hover:text-white"
         )}
         style={{
-          backgroundColor: !isOpen && (
+          backgroundColor: !isOpen ? (
             type === 'product' && selectedCollection ? selectedCollection.color :
             type === 'product' && selectedOption?.color ? selectedOption.color : 
             type === 'color' && selectedOption ? selectedOption.color : 
             undefined
-          ),
+          ) : undefined,
         }}
       >
         <span className={cn(
