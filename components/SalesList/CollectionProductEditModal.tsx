@@ -34,6 +34,8 @@ export default function CollectionProductEditModal({
     addCollection,
     updateCollection,
     deleteCollection,
+    addCollectionColor,
+    removeCollectionColor,
     addProduct,
     updateProduct,
     deleteProduct,
@@ -163,7 +165,7 @@ export default function CollectionProductEditModal({
   }
 
   const modalContent = (
-    <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+    <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[80vh] overflow-hidden flex flex-col">
       {/* Header */}
       <div className="bg-white p-4 flex items-center justify-between border-b border-gray-200">
         <h2 className="text-xl font-bold text-gray-800">
@@ -305,48 +307,52 @@ export default function CollectionProductEditModal({
                       </button>
                     </div>
                     
-                    {/* Products Section */}
+                    {/* Products and Colors Section */}
                     {isExpanded && (
-                      <div className="border-t border-gray-200 p-3 bg-gray-50">
-                        {/* Add New Product */}
-                        <div className="flex gap-2 mb-3">
-                          <input
-                            type="text"
-                            value={newProductName[collection.id] || ''}
-                            onChange={(e) => setNewProductName(prev => ({
-                              ...prev,
-                              [collection.id]: e.target.value
-                            }))}
-                            placeholder="Product name..."
-                            className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-squarage-green"
-                          />
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={newProductRevenue[collection.id] || ''}
-                            onChange={(e) => setNewProductRevenue(prev => ({
-                              ...prev,
-                              [collection.id]: e.target.value
-                            }))}
-                            placeholder="Price..."
-                            className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-squarage-green"
-                          />
-                          <button
-                            onClick={() => handleAddProduct(collection.id)}
-                            disabled={!newProductName[collection.id]?.trim() || !newProductRevenue[collection.id]?.trim()}
-                            className="px-3 py-1 bg-squarage-green text-white rounded text-sm hover:bg-squarage-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Add
-                          </button>
-                        </div>
-                        
-                        {/* Products List */}
-                        {collectionProducts.length === 0 ? (
-                          <p className="text-gray-500 text-xs italic">No products in this collection</p>
-                        ) : (
-                          <div className="space-y-1">
-                            {collectionProducts.map(product => (
-                              <div key={product.id} className="flex items-center gap-2 bg-white p-2 rounded">
+                      <div className="border-t border-gray-200 bg-gray-50">
+                        <div className="grid grid-cols-2 gap-4 p-3">
+                          {/* Products Column */}
+                          <div>
+                            <h4 className="font-medium text-sm text-gray-700 mb-2">Products</h4>
+                            {/* Add New Product */}
+                            <div className="flex gap-2 mb-3">
+                              <input
+                                type="text"
+                                value={newProductName[collection.id] || ''}
+                                onChange={(e) => setNewProductName(prev => ({
+                                  ...prev,
+                                  [collection.id]: e.target.value
+                                }))}
+                                placeholder="Product name..."
+                                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-squarage-green"
+                              />
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={newProductRevenue[collection.id] || ''}
+                                onChange={(e) => setNewProductRevenue(prev => ({
+                                  ...prev,
+                                  [collection.id]: e.target.value
+                                }))}
+                                placeholder="Price..."
+                                className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-squarage-green"
+                              />
+                              <button
+                                onClick={() => handleAddProduct(collection.id)}
+                                disabled={!newProductName[collection.id]?.trim() || !newProductRevenue[collection.id]?.trim()}
+                                className="px-3 py-1 bg-squarage-green text-white rounded text-sm hover:bg-squarage-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Add
+                              </button>
+                            </div>
+                            
+                            {/* Products List */}
+                            {collectionProducts.length === 0 ? (
+                              <p className="text-gray-500 text-xs italic">No products in this collection</p>
+                            ) : (
+                              <div className="space-y-1">
+                                {collectionProducts.map(product => (
+                                  <div key={product.id} className="flex items-center gap-2 bg-white p-2 rounded">
                                 {editingProductId === product.id ? (
                                   <>
                                     <input
@@ -400,10 +406,70 @@ export default function CollectionProductEditModal({
                                     </button>
                                   </>
                                 )}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            )}
                           </div>
-                        )}
+                          
+                          {/* Collection Colors Column */}
+                          <div>
+                            <h4 className="font-medium text-sm text-gray-700 mb-2">Collection Colors</h4>
+                            <div className="bg-white p-3 rounded border border-gray-200">
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {(collection.availableColors || [collection.color]).map(color => (
+                                  <div key={color} className="relative group">
+                                    <div
+                                      className="w-8 h-8 rounded border-2 border-gray-300"
+                                      style={{ backgroundColor: color }}
+                                      title={color}
+                                    />
+                                    {/* Don't allow removing the default collection color */}
+                                    {color !== collection.color && (
+                                      <button
+                                        onClick={() => removeCollectionColor(collection.id, color)}
+                                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full hidden group-hover:flex items-center justify-center hover:bg-red-600"
+                                        title="Remove color"
+                                      >
+                                        <X size={10} />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                                {/* Add new color button */}
+                                <button
+                                  ref={(el) => {
+                                    if (el) colorButtonRefs.current[`add-${collection.id}`] = el
+                                  }}
+                                  onClick={() => setShowCollectionColorPicker(
+                                    showCollectionColorPicker === `add-${collection.id}` ? null : `add-${collection.id}`
+                                  )}
+                                  className="w-8 h-8 rounded border-2 border-dashed border-gray-400 hover:border-gray-600 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+                                  title="Add color"
+                                >
+                                  <Plus size={16} />
+                                </button>
+                                <ColorPicker
+                                  isOpen={showCollectionColorPicker === `add-${collection.id}`}
+                                  onClose={() => setShowCollectionColorPicker(null)}
+                                  onSelect={(color) => {
+                                    // Check if color is already in the collection
+                                    const currentColors = collection.availableColors || [collection.color]
+                                    if (!currentColors.includes(color)) {
+                                      addCollectionColor(collection.id, color)
+                                    }
+                                    setShowCollectionColorPicker(null)
+                                  }}
+                                  currentColor={undefined}
+                                  triggerRef={{ current: colorButtonRefs.current[`add-${collection.id}`] }}
+                                />
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                These colors will be available for selection when creating sales with products from this collection.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

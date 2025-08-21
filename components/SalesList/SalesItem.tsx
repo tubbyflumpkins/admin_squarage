@@ -9,6 +9,7 @@ import useSalesStore from '@/lib/salesStore'
 import SalesStatusDropdown from './SalesStatusDropdown'
 import DeliveryMethodDropdown from './DeliveryMethodDropdown'
 import ProductDropdown from './ProductDropdown'
+import ColorSelector from './ColorSelector'
 import SaleSubtaskList from './SaleSubtaskList'
 import type { Sale, SaleStatus } from '@/lib/salesTypes'
 import { cn, hexToPastel } from '@/lib/utils'
@@ -193,7 +194,7 @@ export default function SalesItem({ sale, onEdit, onDelete, isGlassView = false 
           currentStatus === 'dead' && 'bg-red-200/80'
         )}
       >
-        <div className="grid grid-cols-[14px_110px_1fr_200px_80px_120px_100px_30px_32px] text-sm relative">
+        <div className="grid grid-cols-[14px_110px_1fr_100px_60px_80px_120px_100px_30px_32px] text-sm relative">
           {/* Strike-through line for dead sales only */}
           {currentStatus === 'dead' && (
             <div 
@@ -271,6 +272,16 @@ export default function SalesItem({ sale, onEdit, onDelete, isGlassView = false 
                 }
               }}
               compact
+              selectedColor={sale.selectedColor}
+            />
+          </div>
+
+          {/* Color */}
+          <div className="px-2 py-1 flex items-center justify-center border-l border-brown-light/20">
+            <ColorSelector
+              saleId={sale.id}
+              productId={sale.productId}
+              selectedColor={sale.selectedColor}
             />
           </div>
 

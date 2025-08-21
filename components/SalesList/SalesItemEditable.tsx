@@ -9,6 +9,7 @@ import useSalesStore from '@/lib/salesStore'
 import SalesStatusDropdown from './SalesStatusDropdown'
 import DeliveryMethodDropdown from './DeliveryMethodDropdown'
 import ProductDropdown from './ProductDropdown'
+import ColorSelector from './ColorSelector'
 
 interface SalesItemEditableProps {
   sale?: Sale
@@ -98,7 +99,7 @@ export default function SalesItemEditable({ sale, isNew = false, onSave, onCance
         isNew && 'ring-2 ring-squarage-green'
       )}
     >
-      <div className="grid grid-cols-[14px_110px_1fr_200px_80px_120px_100px_30px_32px] text-sm">
+      <div className="grid grid-cols-[14px_110px_1fr_100px_60px_80px_120px_100px_30px_32px] text-sm">
         {/* Drag handle (disabled) */}
         <div className="py-1 flex items-center justify-center text-gray-300">
           <span className="text-xs">⋮⋮</span>
@@ -142,6 +143,12 @@ export default function SalesItemEditable({ sale, isNew = false, onSave, onCance
             }}
             compact
           />
+        </div>
+
+        {/* Color */}
+        <div className="px-2 py-1 flex items-center justify-center border-l border-brown-light/20">
+          {/* Placeholder for color - disabled in edit mode */}
+          <div className="w-6 h-6 rounded border-2 border-gray-200 bg-gray-100" />
         </div>
 
         {/* Revenue (display only) */}

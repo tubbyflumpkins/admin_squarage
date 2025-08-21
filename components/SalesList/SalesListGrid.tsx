@@ -21,6 +21,7 @@ import useSalesStore from '@/lib/salesStore'
 import SalesItem from './SalesItem'
 import SalesItemEditable from './SalesItemEditable'
 import CollectionProductEditModal from './CollectionProductEditModal'
+import SalesFilterDropdown from './SalesFilterDropdown'
 import type { Sale } from '@/lib/salesTypes'
 
 interface SalesListGridProps {
@@ -37,6 +38,7 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
   const {
     sales,
     products,
+    collections,
     filters,
     isLoading,
     hasLoadedFromServer,
@@ -112,29 +114,38 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
     sortedFilteredSales.push(...active, ...fulfilled, ...dead)
   }
 
-  // Calculate total sales count (excluding dead)
-  const totalSalesCount = sales.filter(s => s.status !== 'dead').length
-
-  // Calculate total revenue (excluding dead)
-  const totalRevenue = sales
-    .filter(s => s.status !== 'dead')
-    .reduce((sum, sale) => {
-      // Get revenue: first check sale's custom revenue, then product's default revenue
-      let revenue = 0
-      
-      if (typeof sale.revenue === 'number' && sale.revenue >= 0) {
-        // Sale has a custom revenue (including 0)
-        revenue = sale.revenue
-      } else if (sale.productId && products) {
-        // No custom revenue, use product's default
-        const product = products.find(p => p.id === sale.productId)
-        if (product && typeof product.revenue === 'number') {
-          revenue = product.revenue
-        }
+  // Helper function to calculate revenue for a sale
+  const getRevenue = (sale: any) => {
+    let revenue = 0
+    if (typeof sale.revenue === 'number' && sale.revenue >= 0) {
+      revenue = sale.revenue
+    } else if (sale.productId && products) {
+      const product = products.find(p => p.id === sale.productId)
+      if (product && typeof product.revenue === 'number') {
+        revenue = product.revenue
       }
-      
-      return sum + revenue
-    }, 0)
+    }
+    return revenue
+  }
+
+  // Calculate earned revenue (fulfilled only)
+  const earnedRevenue = sales
+    .filter(s => s.status === 'fulfilled')
+    .reduce((sum, sale) => sum + getRevenue(sale), 0)
+
+  // Calculate pipeline revenue (in_progress + not_started)
+  const pipelineRevenue = sales
+    .filter(s => s.status === 'in_progress' || s.status === 'not_started')
+    .reduce((sum, sale) => sum + getRevenue(sale), 0)
+
+  // Calculate total revenue (fulfilled + in_progress + not_started, excluding dead)
+  const totalRevenue = earnedRevenue + pipelineRevenue
+
+  // Calculate fulfilled count
+  const fulfilledCount = sales.filter(s => s.status === 'fulfilled').length
+
+  // Calculate pipeline count (in_progress + not_started)
+  const pipelineCount = sales.filter(s => s.status === 'in_progress' || s.status === 'not_started').length
 
   // Sorting options
   const handleSort = (sortBy: 'placementDate' | 'status' | 'deliveryMethod' | 'createdAt') => {
@@ -171,18 +182,44 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
             <span>Add Sale</span>
           </button>
           
-          {/* Total Sales Display */}
-          <div className="text-white font-medium">
-            <span className="text-white/80">Total Sales:</span>{' '}
-            <span className="text-white font-bold">{totalSalesCount}</span>
-          </div>
-          
-          {/* Total Revenue Display */}
-          <div className="text-white font-medium">
-            <span className="text-white/80">Total Revenue:</span>{' '}
-            <span className="text-white font-bold">
-              ${totalRevenue === 0 ? '0' : (totalRevenue / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-            </span>
+          {/* Metrics Display - Two Lines */}
+          <div className="flex flex-col gap-1">
+            {/* Line 1: Revenue Metrics */}
+            <div className="flex items-center gap-4">
+              <div className="text-white font-medium">
+                <span className="text-white/80">Earned Revenue:</span>{' '}
+                <span className="text-white font-bold">
+                  ${earnedRevenue === 0 ? '0' : (earnedRevenue / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              
+              <div className="text-white font-medium">
+                <span className="text-white/80">Pipeline:</span>{' '}
+                <span className="text-white font-bold">
+                  ${pipelineRevenue === 0 ? '0' : (pipelineRevenue / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              
+              <div className="text-white font-medium">
+                <span className="text-white/80">Total:</span>{' '}
+                <span className="text-white font-bold">
+                  ${totalRevenue === 0 ? '0' : (totalRevenue / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+            
+            {/* Line 2: Count Metrics */}
+            <div className="flex items-center gap-4">
+              <div className="text-white font-medium">
+                <span className="text-white/80">Fulfilled:</span>{' '}
+                <span className="text-white font-bold">{fulfilledCount}</span>
+              </div>
+              
+              <div className="text-white font-medium">
+                <span className="text-white/80">Pipeline:</span>{' '}
+                <span className="text-white font-bold">{pipelineCount}</span>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -198,7 +235,7 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
 
       {/* Column Headers */}
       <div className="bg-squarage-white/50 rounded-t-lg border border-brown-light/30">
-        <div className="grid grid-cols-[14px_110px_1fr_200px_80px_120px_100px_30px_32px] text-xs font-medium text-brown-medium uppercase tracking-wider">
+        <div className="grid grid-cols-[14px_110px_1fr_100px_60px_80px_120px_100px_30px_32px] text-xs font-medium text-brown-medium uppercase tracking-wider">
           <div className="px-2 py-1.5" /> {/* Space for drag handle */}
           <div className="px-2 py-1.5 text-center border-l border-brown-light/20">Status</div>
           
@@ -209,7 +246,53 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
             Name
           </button>
           
-          <div className="px-2 py-1.5 border-l border-brown-light/20">Product</div>
+          <div className="border-l border-brown-light/20">
+            <SalesFilterDropdown
+              type="product"
+              options={products.map(p => {
+                const collection = collections.find(c => c.id === p.collectionId)
+                return {
+                  id: p.id,
+                  name: p.name,
+                  color: collection?.color
+                }
+              })}
+              selectedValue={filters.productId}
+              onSelect={(value) => setFilter({ productId: value })}
+            />
+          </div>
+          
+          <div className="border-l border-brown-light/20">
+            <SalesFilterDropdown
+              type="color"
+              options={(() => {
+                // Get all unique colors from sales that have been used
+                const usedColors = new Set<string>()
+                sales.forEach(sale => {
+                  if (sale.selectedColor) {
+                    usedColors.add(sale.selectedColor)
+                  }
+                })
+                
+                // Also add all available colors from collections
+                collections.forEach(collection => {
+                  if (collection.availableColors) {
+                    collection.availableColors.forEach(color => usedColors.add(color))
+                  } else {
+                    usedColors.add(collection.color)
+                  }
+                })
+                
+                return Array.from(usedColors).map(color => ({
+                  id: color,
+                  name: '',
+                  color
+                }))
+              })()}
+              selectedValue={filters.selectedColor}
+              onSelect={(value) => setFilter({ selectedColor: value })}
+            />
+          </div>
           
           <div className="px-2 py-1.5 text-right border-l border-brown-light/20">Revenue</div>
           

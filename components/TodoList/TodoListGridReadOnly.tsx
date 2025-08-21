@@ -129,11 +129,15 @@ export default function TodoListGridReadOnly({ isWidget = false, containerHeight
     )
   }
 
+  // Calculate open tasks count
+  const openTasksCount = data?.todos ? data.todos.filter(t => t.status === 'not_started' || t.status === 'in_progress').length : 0
+
   return (
     <>
       {isWidget && (
-        <div className="mb-4">
+        <div className="mb-4 flex items-baseline justify-between">
           <h2 className="text-xl font-bold text-white">Todo List</h2>
+          <span className="text-sm text-white/80">Open Tasks: {openTasksCount}</span>
         </div>
       )}
 

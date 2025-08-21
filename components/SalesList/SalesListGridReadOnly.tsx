@@ -76,11 +76,32 @@ export default function SalesListGridReadOnly({ isWidget = false, containerHeigh
     )
   }
 
+  // Calculate pipeline metrics
+  const pipelineSales = sortedSales.filter(s => s.status === 'not_started' || s.status === 'in_progress')
+  const pipelineCount = pipelineSales.length
+  
+  // Calculate pipeline revenue
+  const pipelineRevenue = pipelineSales.reduce((sum, sale) => {
+    let revenue = 0
+    if (typeof sale.revenue === 'number' && sale.revenue >= 0) {
+      revenue = sale.revenue
+    } else if (sale.productId && data?.products) {
+      const product = data.products.find(p => p.id === sale.productId)
+      if (product && typeof product.revenue === 'number') {
+        revenue = product.revenue
+      }
+    }
+    return sum + revenue
+  }, 0)
+
   return (
     <>
       {isWidget && (
-        <div className="mb-4">
+        <div className="mb-4 flex items-baseline justify-between">
           <h2 className="text-xl font-bold text-white">Sales Tracker</h2>
+          <span className="text-sm text-white/80">
+            Pipeline: {pipelineCount} (${(pipelineRevenue / 100).toLocaleString()})
+          </span>
         </div>
       )}
 

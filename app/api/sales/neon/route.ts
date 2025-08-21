@@ -69,6 +69,7 @@ export async function GET() {
       name: sale.name,
       productId: sale.productId || undefined,
       revenue: sale.revenue || undefined,
+      selectedColor: sale.selectedColor || undefined,
       placementDate: sale.placementDate!,
       deliveryMethod: sale.deliveryMethod as 'shipping' | 'local',
       status: sale.status as StoreSale['status'],
@@ -82,7 +83,8 @@ export async function GET() {
     const transformedCollections: StoreCollection[] = dbCollections.map(col => ({
       id: col.id,
       name: col.name,
-      color: col.color
+      color: col.color,
+      availableColors: (col.availableColors as string[]) || [col.color]
     }))
     
     // Transform products
@@ -257,6 +259,7 @@ export async function POST(request: Request) {
           name: saleData.name,
           productId: saleData.productId || null,
           revenue: saleData.revenue || null,
+          selectedColor: saleData.selectedColor || null,
           placementDate: new Date(saleData.placementDate),
           deliveryMethod: saleData.deliveryMethod,
           status: saleData.status,
@@ -272,6 +275,7 @@ export async function POST(request: Request) {
               name: saleValues.name,
               productId: saleValues.productId,
               revenue: saleValues.revenue,
+              selectedColor: saleValues.selectedColor,
               placementDate: saleValues.placementDate,
               deliveryMethod: saleValues.deliveryMethod,
               status: saleValues.status,
@@ -324,6 +328,7 @@ export async function POST(request: Request) {
           id: collection.id,
           name: collection.name,
           color: collection.color,
+          availableColors: collection.availableColors || [collection.color],
           createdAt: new Date()
         }
         
@@ -332,7 +337,8 @@ export async function POST(request: Request) {
           await db.update(collections)
             .set({
               name: collectionValues.name,
-              color: collectionValues.color
+              color: collectionValues.color,
+              availableColors: collectionValues.availableColors
             })
             .where(eq(collections.id, collection.id))
         } else {

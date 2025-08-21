@@ -57,7 +57,8 @@ export const subtasksRelations = relations(subtasks, ({ one }) => ({
 export const collections = pgTable('collections', {
   id: varchar('id', { length: 255 }).primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
-  color: varchar('color', { length: 7 }).notNull(), // Hex color
+  color: varchar('color', { length: 7 }).notNull(), // Default hex color
+  availableColors: jsonb('available_colors').$type<string[]>().default([]).notNull(), // Available colors for this collection
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -76,6 +77,7 @@ export const sales = pgTable('sales', {
   name: text('name').notNull(), // Customer/order name (renamed from 'order')
   productId: varchar('product_id', { length: 255 }).references(() => products.id, { onDelete: 'set null' }),
   revenue: integer('revenue'), // Custom revenue for this sale (in cents, can override product default)
+  selectedColor: varchar('selected_color', { length: 7 }), // Selected color from collection's available colors
   placementDate: timestamp('placement_date').notNull(),
   deliveryMethod: varchar('delivery_method', { length: 20 }).notNull(), // 'shipping' or 'local'
   status: varchar('status', { length: 20 }).notNull(), // 'not_started', 'in_progress', 'fulfilled', 'dead'

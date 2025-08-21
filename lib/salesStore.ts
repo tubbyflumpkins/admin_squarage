@@ -27,6 +27,9 @@ interface SalesStore {
   addCollection: (collection: Omit<Collection, 'id'>) => void
   updateCollection: (id: string, collection: Partial<Collection>) => void
   deleteCollection: (id: string) => void
+  addCollectionColor: (collectionId: string, color: string) => void
+  removeCollectionColor: (collectionId: string, color: string) => void
+  setCollectionColors: (collectionId: string, colors: string[]) => void
   
   // Product management
   addProduct: (product: Omit<Product, 'id'>) => void
@@ -57,6 +60,8 @@ const useSalesStore = create<SalesStore>((set, get) => ({
     deliveryMethod: undefined,
     status: 'all' as FilterBy,
     sortBy: 'placementDate' as SortBy,
+    productId: undefined,
+    selectedColor: undefined,
   },
   
   // Loading state
@@ -253,6 +258,25 @@ const useSalesStore = create<SalesStore>((set, get) => ({
       filtered = filtered.filter((s) => s.deliveryMethod === state.filters.deliveryMethod)
     }
     
+    // Apply product filter (can be a product ID or collection ID)
+    if (state.filters.productId) {
+      if (state.filters.productId.startsWith('col-')) {
+        // Filter by collection
+        const collectionProducts = state.products
+          .filter(p => p.collectionId === state.filters.productId)
+          .map(p => p.id)
+        filtered = filtered.filter((s) => s.productId && collectionProducts.includes(s.productId))
+      } else {
+        // Filter by specific product
+        filtered = filtered.filter((s) => s.productId === state.filters.productId)
+      }
+    }
+    
+    // Apply color filter
+    if (state.filters.selectedColor) {
+      filtered = filtered.filter((s) => s.selectedColor === state.filters.selectedColor)
+    }
+    
     // Apply status filter
     if (state.filters.status === 'fulfilled') {
       filtered = filtered.filter((s) => s.status === 'fulfilled')
@@ -282,6 +306,7 @@ const useSalesStore = create<SalesStore>((set, get) => ({
     const newCollection: Collection = {
       ...collection,
       id: `col-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      availableColors: collection.availableColors || [collection.color],
     }
     
     set((state) => ({
@@ -308,6 +333,45 @@ const useSalesStore = create<SalesStore>((set, get) => ({
       collections: state.collections.filter((col) => col.id !== id),
       // Also delete all products in this collection
       products: state.products.filter((prod) => prod.collectionId !== id),
+    }))
+    
+    // Auto-save
+    get().saveToServer()
+  },
+  
+  addCollectionColor: (collectionId, color) => {
+    set((state) => ({
+      collections: state.collections.map((col) =>
+        col.id === collectionId
+          ? { ...col, availableColors: [...(col.availableColors || [col.color]), color] }
+          : col
+      ),
+    }))
+    
+    // Auto-save
+    get().saveToServer()
+  },
+  
+  removeCollectionColor: (collectionId, color) => {
+    set((state) => ({
+      collections: state.collections.map((col) =>
+        col.id === collectionId
+          ? { ...col, availableColors: (col.availableColors || [col.color]).filter(c => c !== color) }
+          : col
+      ),
+    }))
+    
+    // Auto-save
+    get().saveToServer()
+  },
+  
+  setCollectionColors: (collectionId, colors) => {
+    set((state) => ({
+      collections: state.collections.map((col) =>
+        col.id === collectionId
+          ? { ...col, availableColors: colors }
+          : col
+      ),
     }))
     
     // Auto-save

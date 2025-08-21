@@ -11,7 +11,7 @@ interface ColorPickerProps {
   triggerRef: React.RefObject<HTMLElement>
 }
 
-// 8 bold colors + 8 pastel versions
+// Color palette with bold, pastel, and neutral colors
 const colorPalette = {
   bold: [
     '#4A9B4E', // Squarage Green
@@ -32,6 +32,13 @@ const colorPalette = {
     '#FFD485', // Light Yellow
     '#C39BD3', // Light Purple
     '#5A9FD4', // Light Dark Blue
+  ],
+  neutral: [
+    '#FFFFFF', // White
+    '#000000', // Black
+    '#D4A373', // Light Brown
+    '#8B6F47', // Medium Brown
+    '#5C4033', // Dark Brown
   ]
 }
 
@@ -131,6 +138,24 @@ export default function ColorPicker({ isOpen, onClose, onSelect, currentColor, t
                 currentColor === color ? 'border-squarage-black ring-2 ring-squarage-green' : 'border-brown-light'
               }`}
               style={{ backgroundColor: color }}
+            />
+          ))}
+        </div>
+        <div className="flex gap-1">
+          {colorPalette.neutral.map((color) => (
+            <button
+              key={color}
+              onClick={() => {
+                onSelect(color)
+                onClose()
+              }}
+              className={`w-7 h-7 rounded border-2 hover:scale-110 transition-transform ${
+                currentColor === color ? 'border-squarage-black ring-2 ring-squarage-green' : 'border-brown-light'
+              }`}
+              style={{ 
+                backgroundColor: color,
+                ...(color === '#FFFFFF' && { border: '2px solid #ccc' })
+              }}
             />
           ))}
         </div>

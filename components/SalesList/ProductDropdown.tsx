@@ -9,9 +9,10 @@ interface ProductDropdownProps {
   value?: string
   onChange: (value: string | undefined) => void
   compact?: boolean
+  selectedColor?: string
 }
 
-export default function ProductDropdown({ value, onChange, compact = false }: ProductDropdownProps) {
+export default function ProductDropdown({ value, onChange, compact = false, selectedColor }: ProductDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   
@@ -53,10 +54,12 @@ export default function ProductDropdown({ value, onChange, compact = false }: Pr
         className={cn(
           "flex items-center justify-between gap-1 rounded font-medium hover:opacity-80 transition-all whitespace-nowrap",
           compact ? "px-1.5 py-0.5 text-xs" : "px-2 py-1 text-sm",
-          selectedCollection ? "text-white" : "bg-gray-100 text-gray-700"
+          !selectedCollection && "bg-gray-100 text-gray-700",
+          selectedCollection && (selectedColor === '#FFFFFF' || selectedCollection.color === '#FFFFFF') ? "text-black" : 
+          selectedCollection ? "text-white" : ""
         )}
         style={{
-          backgroundColor: selectedCollection ? selectedCollection.color : undefined,
+          backgroundColor: selectedColor || (selectedCollection ? selectedCollection.color : undefined),
         }}
       >
         <span className="truncate font-bold">
@@ -66,66 +69,75 @@ export default function ProductDropdown({ value, onChange, compact = false }: Pr
       </button>
 
       {isOpen && (
-        <div className={cn(
-          "absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto",
-          compact ? "text-xs" : "text-sm"
-        )}>
-          {/* Option to clear selection */}
-          <button
-            onClick={() => handleSelect(undefined)}
-            className={cn(
-              "w-full text-left hover:bg-gray-50 transition-colors",
-              compact ? "px-1.5 py-1" : "px-2 py-1.5",
-              !value && "bg-gray-50"
-            )}
-          >
-            <span className="text-gray-500">None</span>
-          </button>
-          
-          {/* Products grouped by collection */}
-          {productsByCollection.map(({ collection, products }) => (
-            <div key={collection.id}>
-              <div 
-                className={cn(
-                  "font-semibold border-t",
-                  compact ? "px-1.5 py-1" : "px-2 py-1.5"
-                )}
-                style={{ 
-                  backgroundColor: `${collection.color}20`,
-                  borderTopColor: collection.color 
-                }}
-              >
-                {collection.name}
-              </div>
-              {products.map(product => (
-                <button
-                  key={product.id}
-                  onClick={() => handleSelect(product.id)}
-                  className={cn(
-                    "w-full text-left hover:bg-gray-50 transition-colors",
-                    compact ? "px-3 py-1" : "px-4 py-1.5",
-                    value === product.id && "bg-blue-50"
-                  )}
-                >
-                  <span 
-                    className="inline-block px-2 py-0.5 rounded text-xs font-bold text-white"
-                    style={{ backgroundColor: collection.color }}
+        <div className="absolute z-50 mt-2 backdrop-blur-xl bg-white/40 border-2 border-white/60 rounded-2xl shadow-2xl p-4"
+             style={{ left: '50%', transform: 'translateX(-50%)', minWidth: '380px', maxWidth: '90vw' }}>
+          <div className="absolute inset-0 bg-gradient-to-br from-white/50 via-white/30 to-transparent rounded-2xl pointer-events-none" />
+          <div className="relative">
+            {/* Header */}
+            <div className="mb-3">
+              <h3 className="text-xs font-bold text-squarage-black drop-shadow-sm">Select Product</h3>
+            </div>
+            
+            {/* Option to clear selection */}
+            <button
+              onClick={() => handleSelect(undefined)}
+              className={cn(
+                "w-full mb-3 px-3 py-2 text-xs font-medium rounded-xl text-left",
+                "backdrop-blur-sm bg-white/50 border border-white/60",
+                "hover:bg-white/70 hover:scale-[1.01] hover:shadow-lg",
+                "transition-all duration-200 transform",
+                !value && "ring-2 ring-squarage-green bg-squarage-green/20"
+              )}
+            >
+              <span className="text-gray-600">No Product</span>
+            </button>
+            
+            {/* Collections Grid */}
+            <div className="grid grid-cols-3 gap-3 max-h-80 overflow-y-auto">
+              {productsByCollection.map(({ collection, products }) => (
+                <div key={collection.id} className="space-y-2">
+                  {/* Collection Header (not clickable in product selector) */}
+                  <div
+                    className="w-full px-3 py-1.5 text-xs font-bold text-white rounded-xl shadow-md"
+                    style={{ 
+                      backgroundColor: collection.color,
+                      backdropFilter: 'blur(8px)'
+                    }}
                   >
-                    {product.name}
-                  </span>
-                </button>
+                    {collection.name}
+                  </div>
+                  
+                  {/* Products in Collection */}
+                  <div className="space-y-1">
+                    {products.map(product => (
+                      <button
+                        key={product.id}
+                        onClick={() => handleSelect(product.id)}
+                        className={cn(
+                          "w-full px-2.5 py-1.5 text-xs text-left rounded-lg",
+                          "backdrop-blur-sm bg-white/60 border border-white/70",
+                          "hover:bg-white/80 hover:scale-[1.02] hover:shadow-md",
+                          "transition-all duration-150 transform",
+                          value === product.id && "ring-2 ring-squarage-green bg-squarage-green/10"
+                        )}
+                        style={{ 
+                          borderColor: `${collection.color}40`
+                        }}
+                      >
+                        <div className="font-semibold text-squarage-black">{product.name}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
-          ))}
-          
-          {productsByCollection.length === 0 && (
-            <div className={cn(
-              "text-gray-500 text-center",
-              compact ? "px-1.5 py-2" : "px-2 py-3"
-            )}>
-              No products available
-            </div>
-          )}
+            
+            {productsByCollection.length === 0 && (
+              <div className="text-center py-4 text-xs text-gray-500">
+                No products available. Add products in Settings.
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

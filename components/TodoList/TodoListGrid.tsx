@@ -96,6 +96,12 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
     }
   }
 
+  // Calculate task metrics
+  const completedCount = todos.filter(t => t.status === 'completed').length
+  const openTasksCount = todos.filter(t => t.status === 'not_started' || t.status === 'in_progress').length
+  const deadCount = todos.filter(t => t.status === 'dead').length
+  const totalCount = todos.length
+
   const handleAddNew = () => {
     setIsAddingNew(true)
   }
@@ -172,26 +178,58 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
         </div>
       ) : (
         <div className="flex items-center justify-between mb-4">
-          {isGlassView ? (
-            <button
-              onClick={handleAddNew}
-              disabled={isAddingNew}
-              className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/50 rounded-xl border border-white/60 text-squarage-black font-medium hover:bg-white/65 hover:scale-105 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 transform shadow-lg"
-            >
-              <Plus size={18} className="text-squarage-black" />
-              <span>Add Task</span>
-            </button>
-          ) : (
-            <Button
-              onClick={handleAddNew}
-              size="sm"
-              className="flex items-center gap-2"
-              disabled={isAddingNew}
-            >
-              <Plus size={18} />
-              Add Task
-            </Button>
-          )}
+          <div className="flex items-center gap-4">
+            {isGlassView ? (
+              <button
+                onClick={handleAddNew}
+                disabled={isAddingNew}
+                className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/50 rounded-xl border border-white/60 text-squarage-black font-medium hover:bg-white/65 hover:scale-105 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 transform shadow-lg"
+              >
+                <Plus size={18} className="text-squarage-black" />
+                <span>Add Task</span>
+              </button>
+            ) : (
+              <Button
+                onClick={handleAddNew}
+                size="sm"
+                className="flex items-center gap-2"
+                disabled={isAddingNew}
+              >
+                <Plus size={18} />
+                Add Task
+              </Button>
+            )}
+            
+            {/* Metrics Display - Two Lines (matching sales tracker) */}
+            <div className="flex flex-col gap-1">
+              {/* Line 1: Status Counts */}
+              <div className="flex items-center gap-4">
+                <div className="text-white font-medium">
+                  <span className="text-white/80">Completed:</span>{' '}
+                  <span className="text-white font-bold">{completedCount}</span>
+                </div>
+                
+                <div className="text-white font-medium">
+                  <span className="text-white/80">Open:</span>{' '}
+                  <span className="text-white font-bold">{openTasksCount}</span>
+                </div>
+                
+                <div className="text-white font-medium">
+                  <span className="text-white/80">Total:</span>{' '}
+                  <span className="text-white font-bold">{totalCount}</span>
+                </div>
+              </div>
+              
+              {/* Line 2: Additional Metrics */}
+              <div className="flex items-center gap-4">
+                <div className="text-white font-medium">
+                  <span className="text-white/80">Dead:</span>{' '}
+                  <span className="text-white font-bold">{deadCount}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <button
             onClick={() => setShowBothModals(true)}
             className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/50 rounded-xl border border-white/60 text-squarage-black font-medium hover:bg-white/65 hover:scale-105 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 transform shadow-lg"

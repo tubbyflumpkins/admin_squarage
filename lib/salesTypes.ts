@@ -18,6 +18,7 @@ export interface Collection {
   id: string
   name: string
   color: string
+  availableColors?: string[] // Colors available for products in this collection
 }
 
 export interface Sale {
@@ -25,6 +26,7 @@ export interface Sale {
   name: string // Customer/order name (renamed from 'order')
   productId?: string // Reference to product
   revenue?: number // Custom revenue for this sale (overrides product default)
+  selectedColor?: string // Selected color from collection's available colors
   placementDate: Date
   deliveryMethod: DeliveryMethod
   status: SaleStatus
@@ -41,4 +43,6 @@ export interface SalesFilters {
   deliveryMethod?: DeliveryMethod
   status: FilterBy
   sortBy: SortBy
+  productId?: string
+  selectedColor?: string
 }
