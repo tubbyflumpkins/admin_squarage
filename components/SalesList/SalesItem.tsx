@@ -82,7 +82,7 @@ export default function SalesItem({ sale, onEdit, onDelete, isGlassView = false 
 
   const handleOrderDoubleClick = () => {
     setEditingOrder(true)
-    setOrderValue(sale.order)
+    setOrderValue(sale.name)
   }
 
   const handleOrderSave = () => {
