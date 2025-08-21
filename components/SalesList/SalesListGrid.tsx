@@ -32,6 +32,7 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [dateSortDirection, setDateSortDirection] = useState<'asc' | 'desc'>('asc')
   
   const {
     sales,
@@ -92,6 +93,24 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
   }
 
   const filteredSales = getFilteredSales()
+  
+  // Apply date sort direction if needed
+  const sortedFilteredSales = [...filteredSales]
+  if (dateSortDirection === 'desc') {
+    // Reverse the order within each group (active, fulfilled, dead)
+    const active = sortedFilteredSales.filter(s => s.status !== 'fulfilled' && s.status !== 'dead')
+    const fulfilled = sortedFilteredSales.filter(s => s.status === 'fulfilled')
+    const dead = sortedFilteredSales.filter(s => s.status === 'dead')
+    
+    // Reverse sort each group (newest to oldest)
+    active.sort((a, b) => new Date(b.placementDate).getTime() - new Date(a.placementDate).getTime())
+    fulfilled.sort((a, b) => new Date(b.placementDate).getTime() - new Date(a.placementDate).getTime())
+    dead.sort((a, b) => new Date(b.placementDate).getTime() - new Date(a.placementDate).getTime())
+    
+    // Reassemble maintaining group order
+    sortedFilteredSales.length = 0
+    sortedFilteredSales.push(...active, ...fulfilled, ...dead)
+  }
 
   // Calculate total sales count (excluding dead)
   const totalSalesCount = sales.filter(s => s.status !== 'dead').length
@@ -119,7 +138,12 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
 
   // Sorting options
   const handleSort = (sortBy: 'placementDate' | 'status' | 'deliveryMethod' | 'createdAt') => {
-    setFilter({ sortBy })
+    if (sortBy === 'placementDate') {
+      // Toggle date sort direction
+      setDateSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setFilter({ sortBy })
+    }
   }
 
   if (!isHydrated || isLoading) {
@@ -193,7 +217,7 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
             onClick={() => handleSort('placementDate')}
             className="px-2 py-1.5 flex items-center gap-1 hover:text-squarage-green transition-colors border-l border-brown-light/20"
           >
-            Placed
+            Date Placed
           </button>
           
           <button
@@ -225,7 +249,7 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={filteredSales.map(s => s.id)}
+            items={sortedFilteredSales.map(s => s.id)}
             strategy={verticalListSortingStrategy}
           >
             <div className="divide-y divide-brown-light/20">
@@ -239,7 +263,7 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
                 </div>
               )}
               
-              {filteredSales.map((sale) => (
+              {sortedFilteredSales.map((sale) => (
                 <div key={sale.id} className="hover:bg-squarage-white/30">
                   <SalesItem
                     sale={sale}
@@ -250,7 +274,7 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
                 </div>
               ))}
               
-              {filteredSales.length === 0 && !isAddingNew && (
+              {sortedFilteredSales.length === 0 && !isAddingNew && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="text-brown-light mb-4">
                     <svg

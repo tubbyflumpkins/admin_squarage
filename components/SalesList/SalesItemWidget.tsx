@@ -48,12 +48,12 @@ export default function SalesItemWidget({ sale, products, collections }: SalesIt
       }}
     >
       <div className="grid grid-cols-[80px_1fr_100px_100px] text-sm relative">
-        {/* Strike-through line for fulfilled and dead sales */}
-        {(currentStatus === 'fulfilled' || currentStatus === 'dead') && (
+        {/* Strike-through line for dead sales only */}
+        {currentStatus === 'dead' && (
           <div 
             className={cn(
               "absolute top-1/2 left-0 right-0 h-0.5 -translate-y-1/2 pointer-events-none z-10",
-              currentStatus === 'fulfilled' ? 'bg-green-700' : 'bg-red-700'
+              'bg-red-700'
             )}
           />
         )}
