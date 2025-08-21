@@ -35,6 +35,7 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
   
   const {
     sales,
+    products,
     filters,
     isLoading,
     hasLoadedFromServer,
@@ -92,6 +93,30 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
 
   const filteredSales = getFilteredSales()
 
+  // Calculate total sales count (excluding dead)
+  const totalSalesCount = sales.filter(s => s.status !== 'dead').length
+
+  // Calculate total revenue (excluding dead)
+  const totalRevenue = sales
+    .filter(s => s.status !== 'dead')
+    .reduce((sum, sale) => {
+      // Get revenue: first check sale's custom revenue, then product's default revenue
+      let revenue = 0
+      
+      if (typeof sale.revenue === 'number' && sale.revenue >= 0) {
+        // Sale has a custom revenue (including 0)
+        revenue = sale.revenue
+      } else if (sale.productId && products) {
+        // No custom revenue, use product's default
+        const product = products.find(p => p.id === sale.productId)
+        if (product && typeof product.revenue === 'number') {
+          revenue = product.revenue
+        }
+      }
+      
+      return sum + revenue
+    }, 0)
+
   // Sorting options
   const handleSort = (sortBy: 'placementDate' | 'status' | 'deliveryMethod' | 'createdAt') => {
     setFilter({ sortBy })
@@ -112,14 +137,31 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
     <>
       {/* Header with Add Sale and Settings buttons */}
       <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={handleAddNew}
-          disabled={isAddingNew}
-          className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/50 rounded-xl border border-white/60 text-squarage-black font-medium hover:bg-white/65 hover:scale-105 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 transform shadow-lg"
-        >
-          <Plus size={18} className="text-squarage-black" />
-          <span>Add Sale</span>
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleAddNew}
+            disabled={isAddingNew}
+            className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/50 rounded-xl border border-white/60 text-squarage-black font-medium hover:bg-white/65 hover:scale-105 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 transform shadow-lg"
+          >
+            <Plus size={18} className="text-squarage-black" />
+            <span>Add Sale</span>
+          </button>
+          
+          {/* Total Sales Display */}
+          <div className="text-white font-medium">
+            <span className="text-white/80">Total Sales:</span>{' '}
+            <span className="text-white font-bold">{totalSalesCount}</span>
+          </div>
+          
+          {/* Total Revenue Display */}
+          <div className="text-white font-medium">
+            <span className="text-white/80">Total Revenue:</span>{' '}
+            <span className="text-white font-bold">
+              ${totalRevenue === 0 ? '0' : (totalRevenue / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+        </div>
+        
         <button
           onClick={() => setShowSettingsModal(true)}
           className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-white/50 rounded-xl border border-white/60 text-squarage-black font-medium hover:bg-white/65 hover:scale-105 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 transform shadow-lg"
