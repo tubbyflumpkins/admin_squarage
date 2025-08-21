@@ -31,6 +31,12 @@ export default function Header() {
             >
               Todo List
             </Link>
+            <Link 
+              href="/sales" 
+              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
+            >
+              Sales Tracker
+            </Link>
           </nav>
         </div>
       </div>

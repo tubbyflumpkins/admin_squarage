@@ -27,8 +27,13 @@ admin_squarage/
 │   │       ├── route.ts      # Legacy JSON file API endpoint
 │   │       └── neon/
 │   │           └── route.ts  # Neon database API endpoint
-│   └── todo/
-│       └── page.tsx          # Full-page todo view
+│   │   └── sales/
+│   │       └── neon/
+│   │           └── route.ts  # Sales Neon database API endpoint
+│   ├── todo/
+│   │   └── page.tsx          # Full-page todo view
+│   └── sales/
+│       └── page.tsx          # Full-page sales view
 ├── components/
 │   ├── Dashboard/
 │   │   ├── DashboardLayout.tsx
@@ -43,16 +48,29 @@ admin_squarage/
 │   │   ├── CategoryOwnerEditModal.tsx  # Manage categories/owners
 │   │   ├── SubtaskList.tsx      # Expandable subtasks & notes
 │   │   └── SubtaskItem.tsx      # Individual subtask component
+│   ├── SalesList/
+│   │   ├── SalesFullPage.tsx    # Full page sales view
+│   │   ├── SalesListGrid.tsx    # Main sales grid container
+│   │   ├── SalesItem.tsx        # Individual sale item
+│   │   ├── SalesItemEditable.tsx # Inline editing for sales
+│   │   ├── SalesStatusDropdown.tsx # Status selector
+│   │   ├── DeliveryMethodDropdown.tsx # Delivery method selector
+│   │   ├── ProductDropdown.tsx  # Product selector with collections
+│   │   ├── CollectionProductEditModal.tsx # Manage collections/products
+│   │   ├── SaleSubtaskList.tsx  # Sale subtasks & notes
+│   │   └── SaleSubtaskItem.tsx  # Individual sale subtask
 │   └── UI/
 │       ├── Header.tsx            # Site header with nav
 │       └── Button.tsx            # Reusable button component
 ├── lib/
-│   ├── store.ts                 # Zustand store configuration
-│   ├── types.ts                 # TypeScript interfaces
+│   ├── store.ts                 # Zustand store for todos
+│   ├── salesStore.ts            # Zustand store for sales
+│   ├── types.ts                 # TypeScript interfaces for todos
+│   ├── salesTypes.ts            # TypeScript interfaces for sales
 │   ├── utils.ts                 # Utility functions
 │   └── db/
 │       ├── index.ts            # Neon database connection
-│       └── schema.ts           # Drizzle ORM schema
+│       └── schema.ts           # Drizzle ORM schema (todos & sales)
 ├── scripts/
 │   ├── migrate-data.ts         # Migrate JSON to Neon
 │   ├── push-schema.ts          # Create database tables
@@ -71,6 +89,7 @@ admin_squarage/
 ```
 /                   # Dashboard home with todo widget and placeholder widgets
 ├── /todo           # Full-page todo list view with advanced features
+├── /sales          # Full-page sales tracker with product management
 ```
 
 ## Key Features
@@ -382,3 +401,34 @@ This dashboard is production-ready and deployed on Vercel. The todo list is full
 - Secondary sort always by due date (soonest to latest)
 - Tasks without due dates appear after tasks with dates
 - Maintains separation of active/completed/dead tasks
+
+### Sales Tracker Implementation (August 2025)
+- Complete sales management system mirroring Todo List functionality
+- **Database Schema**:
+  - `sales` table with name, productId, revenue, placementDate, deliveryMethod, status, notes
+  - `collections` table for product grouping with color coding
+  - `products` table with revenue defaults linked to collections
+  - `sale_subtasks` table for sale-specific subtasks
+- **Features**:
+  - Drag-and-drop reordering
+  - Inline editing for name, date, and revenue
+  - Product selection with automatic revenue population
+  - Custom revenue override per sale (double-click to edit)
+  - Collections/Products management via Settings modal
+  - Status tracking: not_started, in_progress, fulfilled, dead
+  - Delivery methods: shipping, local
+  - Subtasks and notes with expandable interface
+- **Revenue System**:
+  - Products have default revenue amounts
+  - Sales inherit product revenue when selected
+  - Revenue can be customized per sale
+  - Stored in cents, displayed in dollars
+- **Visual Design**:
+  - Matches Todo List glassmorphism and styling
+  - Status-based color coding with pastel backgrounds
+  - Bold product names with increased column width
+  - Grid layout: `[14px_110px_1fr_200px_80px_120px_100px_30px_32px]`
+- **API Integration**:
+  - `/api/sales/neon` endpoint with UPSERT pattern
+  - Same protection mechanisms as Todo List
+  - Automatic fallback to JSON if database unavailable
