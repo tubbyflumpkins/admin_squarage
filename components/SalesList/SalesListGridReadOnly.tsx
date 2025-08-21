@@ -102,7 +102,7 @@ export default function SalesListGridReadOnly({ isWidget = false, containerHeigh
         style={{ height: containerHeight }}
       >
         <div className="divide-y divide-brown-light/20">
-          {sortedSales.map((sale) => (
+          {sortedSales.slice(0, 5).map((sale) => (
             <div key={sale.id} className="hover:bg-squarage-white/30">
               <SalesItemWidget
                 sale={sale}
