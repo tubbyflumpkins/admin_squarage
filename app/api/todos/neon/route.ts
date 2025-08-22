@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { db, isDatabaseConfigured } from '@/lib/db'
-import { todos, categories, owners, subtasks } from '@/lib/db/schema'
-import { eq, desc, sql as drizzleSql } from 'drizzle-orm'
+import { todos, categories, owners, subtasks, users } from '@/lib/db/schema'
+import { eq, desc, sql as drizzleSql, or } from 'drizzle-orm'
 import type { Todo as StoreTodo, Subtask as StoreSubtask } from '@/lib/types'
 
 // Fallback to JSON file if database is not configured
@@ -23,6 +25,12 @@ async function fallbackToJsonFile() {
 }
 
 export async function GET() {
+  // Check authentication
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     // Log environment info for debugging
     console.log('GET /api/todos/neon - Environment:', {
@@ -42,11 +50,29 @@ export async function GET() {
 
     console.log('Database is configured, fetching data...')
     
-    // Fetch all data from database
-    const [dbTodos, dbCategories, dbOwners, dbSubtasks] = await Promise.all([
+    // Fetch all users for the owner dropdown
+    const dbUsers = await db.select().from(users)
+    
+    // Create owner list from users with consistent colors
+    const userColors: Record<string, string> = {
+      'Dylan': '#F7901E',  // Orange
+      'Thomas': '#01BAD5', // Blue
+    }
+    
+    const dbOwners = [
+      { id: 'all', name: 'All', color: '#4A9B4E', createdAt: new Date() },
+      ...dbUsers.map(user => ({
+        id: user.id,
+        name: user.name,
+        color: userColors[user.name] || '#8D5524',
+        createdAt: user.createdAt
+      }))
+    ]
+    
+    // Fetch all todos (admin users can see all todos)
+    const [dbTodos, dbCategories, dbSubtasks] = await Promise.all([
       db.select().from(todos).orderBy(desc(todos.createdAt)),
       db.select().from(categories),
-      db.select().from(owners),
       db.select().from(subtasks)
     ])
 
@@ -101,6 +127,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // Check authentication
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const data = await request.json()
     
@@ -251,6 +283,7 @@ export async function POST(request: Request) {
           title: todoData.title,
           category: todoData.category,
           owner: todoData.owner,
+          userId: session.user.id, // Associate with current user
           priority: todoData.priority,
           status: todoData.status,
           dueDate: todoData.dueDate ? new Date(todoData.dueDate) : null,

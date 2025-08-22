@@ -3,13 +3,15 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Menu, X, Home, ListTodo, TrendingUp, Settings } from 'lucide-react'
+import { Menu, X, Home, ListTodo, TrendingUp, Settings, LogOut, User } from 'lucide-react'
 import { usePathname } from 'next/navigation'
+import { signOut, useSession } from 'next-auth/react'
 
 export default function MobileHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const pathname = usePathname()
+  const { data: session } = useSession()
 
   // Handle menu open/close with animation
   const toggleMenu = () => {
@@ -131,17 +133,37 @@ export default function MobileHeader() {
                 {/* Divider */}
                 <div className="mx-4 my-2 border-t border-gray-200" />
 
-                {/* Settings Button */}
-                <button
-                  onClick={() => {
-                    // Handle settings
-                    toggleMenu()
-                  }}
-                  className="w-full px-4 py-3 flex items-center gap-3 transition-colors hover:bg-gray-100 text-squarage-black"
+                {/* Settings Link */}
+                <Link
+                  href="/settings"
+                  onClick={toggleMenu}
+                  className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
+                    pathname === '/settings' 
+                      ? 'bg-squarage-green/10 text-squarage-green' 
+                      : 'hover:bg-gray-100 text-squarage-black'
+                  }`}
                 >
-                  <Settings size={18} className="text-gray-600" />
+                  <Settings size={18} className={pathname === '/settings' ? 'text-squarage-green' : 'text-gray-600'} />
                   <span className="font-medium">Settings</span>
-                </button>
+                </Link>
+
+                {/* Logout Button */}
+                {session && (
+                  <button
+                    onClick={() => {
+                      // Clear service worker cache before logout
+                      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' })
+                      }
+                      signOut()
+                      toggleMenu()
+                    }}
+                    className="w-full px-4 py-3 flex items-center gap-3 transition-colors hover:bg-gray-100 text-squarage-black"
+                  >
+                    <LogOut size={18} className="text-gray-600" />
+                    <span className="font-medium">Logout</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
