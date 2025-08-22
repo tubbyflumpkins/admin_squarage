@@ -2,7 +2,7 @@
 
 import { X } from 'lucide-react'
 import useTodoStore from '@/lib/store'
-import { TodoStatus } from '@/lib/types'
+import { TodoStatus, FilterBy } from '@/lib/types'
 
 interface TodoFilterBarProps {
   onClose: () => void
