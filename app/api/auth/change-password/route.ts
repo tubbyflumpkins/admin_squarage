@@ -25,6 +25,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
     }
 
+    // Check database connection
+    if (!db) {
+      return NextResponse.json({ error: 'Database connection unavailable' }, { status: 500 })
+    }
+
     // Get user from database
     const user = await db
       .select()
