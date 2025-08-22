@@ -38,7 +38,7 @@ export default function PriorityDropdown({ value, onChange, className, compact =
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   
-  const currentPriority = value && value !== '' ? priorityConfig[value] : null
+  const currentPriority = value ? priorityConfig[value] : null
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
