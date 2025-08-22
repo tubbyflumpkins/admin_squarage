@@ -19,6 +19,12 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
+          // Check database connection
+          if (!db) {
+            console.error('Database connection unavailable')
+            return null
+          }
+
           // Find user by email
           const user = await db
             .select()
