@@ -1,11 +1,19 @@
+'use client'
+
+import { useIsMobile } from '@/hooks/useIsMobile'
 import Header from '@/components/UI/Header'
 import SalesFullPage from '@/components/SalesList/SalesFullPage'
-
-// Force dynamic rendering - prevent static generation at build time
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+import SalesListMobile from '@/components/Mobile/Sales/SalesListMobile'
 
 export default function SalesPage() {
+  const isMobile = useIsMobile()
+
+  // Mobile view
+  if (isMobile) {
+    return <SalesListMobile />
+  }
+
+  // Desktop view
   return (
     <div className="min-h-screen bg-squarage-green">
       <Header />

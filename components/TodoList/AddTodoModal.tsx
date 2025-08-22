@@ -33,7 +33,7 @@ export default function AddTodoModal({ isOpen, onClose, onSave, editingTodo }: A
     title: '',
     category: '',
     owner: '',
-    priority: 'medium' as 'low' | 'medium' | 'high',
+    priority: '' as 'low' | 'medium' | 'high' | '',
     status: 'not_started' as 'not_started' | 'in_progress' | 'completed' | 'dead',
     dueDate: '',
     completed: false,
@@ -55,9 +55,9 @@ export default function AddTodoModal({ isOpen, onClose, onSave, editingTodo }: A
     } else {
       setFormData({
         title: '',
-        category: categories[0]?.name || '',
-        owner: owners[0]?.name || '',
-        priority: 'medium',
+        category: '',
+        owner: '',
+        priority: '',
         status: 'not_started',
         dueDate: '',
         completed: false,
@@ -68,6 +68,12 @@ export default function AddTodoModal({ isOpen, onClose, onSave, editingTodo }: A
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validate that priority is selected
+    if (!formData.priority) {
+      alert('Please select a priority')
+      return
+    }
+    
     let dueDate = null
     if (formData.dueDate) {
       // Parse the date string and create a date at noon local time to avoid timezone shifts
@@ -77,6 +83,7 @@ export default function AddTodoModal({ isOpen, onClose, onSave, editingTodo }: A
     
     onSave({
       ...formData,
+      priority: formData.priority as 'low' | 'medium' | 'high',
       dueDate,
     })
     onClose()
@@ -166,6 +173,7 @@ export default function AddTodoModal({ isOpen, onClose, onSave, editingTodo }: A
                   value={formData.priority}
                   onChange={(priority) => setFormData({ ...formData, priority })}
                   className="w-full"
+                  placeholder="Select priority"
                 />
               </div>
 
