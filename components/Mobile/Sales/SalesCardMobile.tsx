@@ -41,7 +41,7 @@ export default function SalesCardMobile({
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const [hasSelectedStatus, setHasSelectedStatus] = useState(!isNew)
-  const { products, collections, updateSale, addSubtask, toggleSubtask, updateNotes } = useSalesStore()
+  const { products, collections, updateSale, addSaleSubtask, toggleSaleSubtask, updateSaleNotes } = useSalesStore()
   
   const product = products.find(p => p.id === sale.productId)
   const collection = product ? collections.find(c => c.id === product.collectionId) : null
@@ -92,13 +92,13 @@ export default function SalesCardMobile({
 
   const handleNotesBlur = () => {
     if (notesValue !== sale.notes) {
-      updateNotes(sale.id, notesValue)
+      updateSaleNotes(sale.id, notesValue)
     }
   }
 
   const handleAddSubtask = () => {
     if (newSubtaskText.trim()) {
-      addSubtask(sale.id, newSubtaskText.trim())
+      addSaleSubtask(sale.id, newSubtaskText.trim())
       setNewSubtaskText('')
     }
   }
@@ -539,7 +539,7 @@ export default function SalesCardMobile({
                   <input
                     type="checkbox"
                     checked={subtask.completed}
-                    onChange={() => toggleSubtask(sale.id, subtask.id)}
+                    onChange={() => toggleSaleSubtask(sale.id, subtask.id)}
                     className="w-4 h-4 rounded border-gray-300"
                     onClick={(e) => e.stopPropagation()}
                   />

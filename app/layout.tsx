@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import PWARegister from '@/components/PWARegister'
+import Providers from '@/components/Providers'
 
 const neueHaas = localFont({
   src: [
@@ -33,18 +34,14 @@ export const metadata: Metadata = {
     apple: '/images/favicon.png',
   },
   manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'Squarage',
-  },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover',
-  },
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
   themeColor: '#4A9B4E',
 }
 
@@ -56,8 +53,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${neueHaas.variable} ${soap.variable}`}>
       <body className="font-neue-haas bg-squarage-green min-h-screen">
-        <PWARegister />
-        {children}
+        <Providers>
+          <PWARegister />
+          {children}
+        </Providers>
       </body>
     </html>
   )

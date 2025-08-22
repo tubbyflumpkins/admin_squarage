@@ -1,6 +1,16 @@
 import { pgTable, serial, text, varchar, timestamp, boolean, integer, jsonb } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
+// Users table
+export const users = pgTable('users', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  password: varchar('password', { length: 255 }).notNull(), // bcrypt hashed
+  role: varchar('role', { length: 50 }).notNull().default('user'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // Categories table
 export const categories = pgTable('categories', {
   id: varchar('id', { length: 255 }).primaryKey(),
@@ -23,6 +33,7 @@ export const todos = pgTable('todos', {
   title: text('title').notNull(),
   category: varchar('category', { length: 255 }).notNull(),
   owner: varchar('owner', { length: 255 }).notNull(),
+  userId: varchar('user_id', { length: 255 }).references(() => users.id, { onDelete: 'cascade' }), // Link to user who created it
   priority: varchar('priority', { length: 10 }).notNull(),
   status: varchar('status', { length: 20 }).notNull(),
   dueDate: timestamp('due_date'),
@@ -42,8 +53,16 @@ export const subtasks = pgTable('subtasks', {
 })
 
 // Define relations
-export const todosRelations = relations(todos, ({ many }) => ({
+export const usersRelations = relations(users, ({ many }) => ({
+  todos: many(todos),
+}))
+
+export const todosRelations = relations(todos, ({ many, one }) => ({
   subtasks: many(subtasks),
+  user: one(users, {
+    fields: [todos.userId],
+    references: [users.id],
+  }),
 }))
 
 export const subtasksRelations = relations(subtasks, ({ one }) => ({
@@ -126,6 +145,8 @@ export const saleSubtasksRelations = relations(saleSubtasks, ({ one }) => ({
 }))
 
 // Type exports for TypeScript
+export type User = typeof users.$inferSelect
+export type NewUser = typeof users.$inferInsert
 export type Category = typeof categories.$inferSelect
 export type NewCategory = typeof categories.$inferInsert
 export type Owner = typeof owners.$inferSelect

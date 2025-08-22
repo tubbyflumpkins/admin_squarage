@@ -1,11 +1,21 @@
 # Squarage Admin Dashboard - Project Documentation
 
+## ⚠️ IMPORTANT: Authentication Documentation
+**Before making any authentication changes, ALWAYS refer to `AUTHENTICATION.md` for:**
+- Complete authentication implementation details
+- User management and session handling
+- Password change functionality
+- Security considerations and best practices
+- Troubleshooting guide for auth issues
+- Mobile vs Desktop authentication differences
+
 ## Project Overview
-An admin dashboard for Squarage company built with Next.js 14, TypeScript, and Tailwind CSS. The dashboard features a modular widget-based design with a fully functional todo list system as the primary feature.
+An admin dashboard for Squarage company built with Next.js 14, TypeScript, and Tailwind CSS. The dashboard features a modular widget-based design with a fully functional todo list system as the primary feature. The system includes NextAuth.js authentication with role-based access control.
 
 ## Tech Stack
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
+- **Authentication**: NextAuth.js v4 with credentials provider
 - **Database**: Neon PostgreSQL (Serverless)
 - **ORM**: Drizzle ORM
 - **Styling**: Tailwind CSS with custom Squarage brand colors
@@ -13,6 +23,7 @@ An admin dashboard for Squarage company built with Next.js 14, TypeScript, and T
 - **Drag & Drop**: @dnd-kit/sortable
 - **Icons**: Lucide React
 - **Date Handling**: date-fns
+- **Password Hashing**: bcryptjs
 - **Deployment**: Vercel with Neon integration
 
 ## Project Structure

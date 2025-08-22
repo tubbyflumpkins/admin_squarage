@@ -1,11 +1,9 @@
 // Service Worker for Squarage Admin PWA
-const CACHE_NAME = 'squarage-admin-v1';
+const CACHE_NAME = 'squarage-admin-v2';
 const urlsToCache = [
-  '/',
-  '/todo',
-  '/sales',
   '/manifest.json',
-  '/images/favicon.png'
+  '/images/favicon.png',
+  '/images/logo_main_white_transparent.png'
 ];
 
 // Install event - cache essential files
@@ -42,62 +40,88 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - serve from cache when offline, network first for API calls
+// Fetch event - smart caching strategy
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Network-first strategy for API calls
-  if (url.pathname.startsWith('/api/')) {
+  // Skip caching for these paths - they need to always go to network
+  const skipCache = [
+    '/api/auth',
+    '/login',
+    '/_next/webpack-hmr',
+    '/_next/static/development'
+  ];
+  
+  if (skipCache.some(path => url.pathname.startsWith(path))) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // Network-first strategy for API calls and HTML pages
+  if (url.pathname.startsWith('/api/') || request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Clone the response before caching
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
-          });
+          // Only cache successful responses
+          if (response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache);
+            });
+          }
           return response;
         })
         .catch(() => {
-          // If network fails, try cache
+          // If network fails and it's a navigation request, try cache
+          if (request.mode === 'navigate') {
+            return caches.match(request).then(response => {
+              if (response) return response;
+              // Return offline page if available
+              return caches.match('/offline.html');
+            });
+          }
+          // For API calls, try cache as fallback
           return caches.match(request);
         })
     );
     return;
   }
 
-  // Cache-first strategy for static assets
-  event.respondWith(
-    caches.match(request)
-      .then((response) => {
-        if (response) {
-          return response;
-        }
-        
-        // Clone the request
-        const fetchRequest = request.clone();
-        
-        return fetch(fetchRequest).then((response) => {
-          // Check if valid response
-          if (!response || response.status !== 200 || response.type === 'opaque') {
+  // Cache-first strategy for static assets (images, fonts, css, js)
+  if (url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|gif|woff|woff2|ttf|eot)$/)) {
+    event.respondWith(
+      caches.match(request)
+        .then((response) => {
+          if (response) {
             return response;
           }
           
-          // Clone the response
-          const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache);
+          return fetch(request).then((response) => {
+            // Check if valid response
+            if (!response || response.status !== 200) {
+              return response;
+            }
+            
+            const responseToCache = response.clone();
+            
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache);
+            });
+            
+            return response;
           });
-          
-          return response;
-        });
-      })
-      .catch((error) => {
-        console.error('Fetch failed:', error);
-        // You could return a custom offline page here
-      })
+        })
+        .catch((error) => {
+          console.error('Fetch failed:', error);
+        })
+    );
+    return;
+  }
+
+  // Default - network first
+  event.respondWith(
+    fetch(request).catch(() => caches.match(request))
   );
 });
 
@@ -115,7 +139,7 @@ async function syncTodos() {
   try {
     // Get queued todos from IndexedDB and sync with server
     console.log('Syncing todos with server...');
-    // Implementation would go here
+    // Implementation would go here when offline support is added
   } catch (error) {
     console.error('Todo sync failed:', error);
   }
@@ -125,7 +149,7 @@ async function syncSales() {
   try {
     // Get queued sales from IndexedDB and sync with server
     console.log('Syncing sales with server...');
-    // Implementation would go here
+    // Implementation would go here when offline support is added
   } catch (error) {
     console.error('Sales sync failed:', error);
   }
@@ -135,8 +159,8 @@ async function syncSales() {
 self.addEventListener('push', (event) => {
   const options = {
     body: event.data ? event.data.text() : 'New update available',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/images/favicon.png',
+    badge: '/images/favicon.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),

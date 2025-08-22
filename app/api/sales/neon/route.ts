@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { db, isDatabaseConfigured } from '@/lib/db'
 import { sales, saleSubtasks, collections, products } from '@/lib/db/schema'
 import { eq, desc, sql as drizzleSql } from 'drizzle-orm'
@@ -23,6 +25,12 @@ async function fallbackToJsonFile() {
 }
 
 export async function GET() {
+  // Check authentication
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     // Log environment info for debugging
     console.log('GET /api/sales/neon - Environment:', {
@@ -117,6 +125,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // Check authentication
+  const session = await getServerSession(authOptions)
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const data = await request.json()
     
