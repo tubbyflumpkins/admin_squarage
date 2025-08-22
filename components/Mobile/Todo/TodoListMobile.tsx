@@ -60,8 +60,8 @@ export default function TodoListMobile() {
       }
       
       // At this point, we clicked outside the card and no dropdowns are open
-      // Save new todo if it exists and has a title
-      if (newTodo && newTodo.title.trim()) {
+      // Save new todo if it exists and has a title and priority
+      if (newTodo && newTodo.title.trim() && newTodo.priority) {
         const { id, ...todoData } = newTodo
         addTodo(todoData)
       }
@@ -130,7 +130,7 @@ export default function TodoListMobile() {
       title: '',
       category: '',
       owner: '',
-      priority: 'low',
+      priority: '' as any,
       status: 'not_started',
       dueDate: null,
       completed: false,
@@ -155,6 +155,11 @@ export default function TodoListMobile() {
 
   const handleSaveNew = () => {
     if (newTodo && newTodo.title.trim()) {
+      // Validate priority is selected
+      if (!newTodo.priority) {
+        alert('Please select a priority')
+        return
+      }
       // Remove temp ID and add to store
       const { id, ...todoData } = newTodo
       addTodo(todoData)
