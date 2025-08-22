@@ -28,15 +28,13 @@ export default function TodoFilterBar({ onClose }: TodoFilterBarProps) {
         <div>
           <label className="text-white/70 text-xs block mb-1">Status</label>
           <select
-            value={filters.status || ''}
-            onChange={(e) => setFilter({ status: e.target.value as TodoStatus | undefined })}
+            value={filters.status || 'all'}
+            onChange={(e) => setFilter({ status: (e.target.value || 'all') as FilterBy })}
             className="w-full px-3 py-2 bg-white/20 text-white rounded-lg border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/50"
           >
-            <option value="">All Status</option>
-            <option value="not_started">Not Started</option>
-            <option value="in_progress">In Progress</option>
+            <option value="all">All Status</option>
+            <option value="pending">Active</option>
             <option value="completed">Completed</option>
-            <option value="dead">Dead</option>
           </select>
         </div>
         
