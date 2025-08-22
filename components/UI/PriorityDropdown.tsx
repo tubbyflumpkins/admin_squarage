@@ -7,10 +7,11 @@ import DropdownPortal from './DropdownPortal'
 type Priority = 'low' | 'medium' | 'high'
 
 interface PriorityDropdownProps {
-  value: Priority
+  value: Priority | ''
   onChange: (priority: Priority) => void
   className?: string
   compact?: boolean
+  placeholder?: string
 }
 
 const priorityConfig = {
@@ -31,13 +32,13 @@ const priorityConfig = {
   }
 }
 
-export default function PriorityDropdown({ value, onChange, className, compact = false }: PriorityDropdownProps) {
+export default function PriorityDropdown({ value, onChange, className, compact = false, placeholder = 'Select priority' }: PriorityDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   
-  const currentPriority = priorityConfig[value]
+  const currentPriority = value ? priorityConfig[value] : null
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -88,12 +89,12 @@ export default function PriorityDropdown({ value, onChange, className, compact =
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'w-full rounded font-medium text-white flex items-center justify-center',
+          'w-full rounded font-medium flex items-center justify-center',
           compact ? 'px-2 py-0.5 text-xs' : 'px-3 py-2 text-sm',
-          currentPriority.bgClass
+          currentPriority ? `text-white ${currentPriority.bgClass}` : 'bg-brown-light/20 text-brown-medium'
         )}
       >
-        <span>{currentPriority.label}</span>
+        <span>{currentPriority ? currentPriority.label : placeholder}</span>
       </button>
 
       {isOpen && (

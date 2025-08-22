@@ -26,7 +26,7 @@ export default function TodoItemEditable({ todo, isNew = false, onSave, onCancel
     title: todo?.title || '',
     category: todo?.category || '',
     owner: todo?.owner || '',
-    priority: todo?.priority || ('medium' as 'low' | 'medium' | 'high'),
+    priority: todo?.priority || ('' as 'low' | 'medium' | 'high' | ''),
     status: todo?.status || (todo?.completed ? 'completed' : 'not_started') as TodoStatus,
     dueDate: todo?.dueDate ? format(new Date(todo.dueDate), 'yyyy-MM-dd') : '',
     completed: todo?.completed || false,
@@ -45,7 +45,7 @@ export default function TodoItemEditable({ todo, isNew = false, onSave, onCancel
     }
     
     // Only save if minimum required fields are filled
-    if (formData.title.trim() && formData.category && formData.owner) {
+    if (formData.title.trim() && formData.category && formData.owner && formData.priority) {
       let dueDate = null
       if (formData.dueDate) {
         // Parse the date string and create a date at noon local time to avoid timezone shifts
@@ -55,6 +55,7 @@ export default function TodoItemEditable({ todo, isNew = false, onSave, onCancel
       
       onSave({
         ...formData,
+        priority: formData.priority as 'low' | 'medium' | 'high',
         completed: formData.status === 'completed',
         dueDate,
       })
@@ -169,6 +170,7 @@ export default function TodoItemEditable({ todo, isNew = false, onSave, onCancel
             onChange={(priority) => setFormData({ ...formData, priority })}
             className="w-full"
             compact
+            placeholder="Priority"
           />
         </div>
 
