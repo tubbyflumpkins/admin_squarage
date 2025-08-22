@@ -24,25 +24,45 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    e.stopPropagation()
+    
+    // Validate inputs
+    if (!email || !password) {
+      setError('Please enter both email and password')
+      return
+    }
+    
     setError('')
     setIsLoading(true)
 
     try {
+      console.log('Attempting login with email:', email)
+      
       const result = await signIn('credentials', {
         email,
         password,
         redirect: false,
+        callbackUrl: '/'
       })
+
+      console.log('SignIn result:', result)
 
       if (result?.error) {
         setError('Invalid email or password')
         setIsLoading(false)
       } else if (result?.ok) {
-        // Navigate using Next.js router
-        router.push('/')
-        router.refresh()
+        // Small delay to ensure session is established
+        setTimeout(() => {
+          router.push('/')
+          router.refresh()
+        }, 100)
+      } else {
+        // Handle unexpected response
+        setError('Login failed. Please try again.')
+        setIsLoading(false)
       }
     } catch (error) {
+      console.error('Login error:', error)
       setError('An error occurred. Please try again.')
       setIsLoading(false)
     }
