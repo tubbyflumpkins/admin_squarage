@@ -55,6 +55,7 @@ export default function TodoItemEditable({ todo, isNew = false, onSave, onCancel
       
       onSave({
         ...formData,
+        priority: formData.priority as 'low' | 'medium' | 'high',
         completed: formData.status === 'completed',
         dueDate,
       })
