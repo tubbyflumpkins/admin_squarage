@@ -139,7 +139,7 @@ export default function CalendarTypeEditModal({ isOpen, onClose }: CalendarTypeE
                     className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <button
-                      ref={el => colorButtonRefs.current[type.id] = el}
+                      ref={el => { colorButtonRefs.current[type.id] = el; }}
                       onClick={() => setShowColorPicker(showColorPicker === type.id ? null : type.id)}
                       className="w-8 h-8 rounded-md border-2 border-gray-300 hover:border-gray-400 transition-colors flex-shrink-0"
                       style={{ backgroundColor: type.color }}
