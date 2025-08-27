@@ -43,6 +43,12 @@ export async function POST(request: NextRequest) {
     console.log('Saving calendar data to database...')
     console.log(`Received ${data.events?.length || 0} events, ${data.calendarTypes?.length || 0} calendar types, ${data.reminders?.length || 0} reminders`)
     
+    // Check if database is configured
+    if (!isDatabaseConfigured() || !db) {
+      console.log('Database not configured, cannot save calendar data')
+      return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
+    }
+    
     // Safety check: Don't allow saving completely empty data if we had data before
     const existingEvents = await db.select().from(calendarEvents)
     const existingTypes = await db.select().from(calendarTypes)
