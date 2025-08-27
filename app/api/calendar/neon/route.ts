@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, isDatabaseConfigured } from '@/lib/db'
 import { calendarEvents, calendarTypes, eventReminders } from '@/lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
 
@@ -7,6 +7,16 @@ import { eq, sql } from 'drizzle-orm'
 export async function GET() {
   try {
     console.log('Fetching calendar data from database...')
+    
+    // Check if database is configured
+    if (!isDatabaseConfigured() || !db) {
+      console.log('Database not configured, returning empty calendar data')
+      return NextResponse.json({
+        events: [],
+        calendarTypes: [],
+        reminders: [],
+      })
+    }
     
     // Fetch all calendar types
     const types = await db.select().from(calendarTypes)
