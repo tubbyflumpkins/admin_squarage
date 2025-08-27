@@ -1,5 +1,5 @@
 // Service Worker for Squarage Admin PWA
-const CACHE_NAME = 'squarage-admin-v3'; // Increment to force cache update
+const CACHE_NAME = 'squarage-admin-v4'; // Increment to force cache update
 const urlsToCache = [
   '/manifest.json',
   '/images/favicon.png',

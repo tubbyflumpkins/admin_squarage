@@ -1,5 +1,5 @@
 // Mobile-optimized Service Worker for Squarage Admin PWA
-const CACHE_NAME = 'squarage-mobile-v2'; // Increment to force cache update
+const CACHE_NAME = 'squarage-mobile-v3'; // Increment to force cache update
 const urlsToCache = [
   '/manifest.json',
   '/images/favicon.png',
