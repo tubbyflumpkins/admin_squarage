@@ -326,7 +326,7 @@ export async function POST(request: Request) {
             
             if (existingSaleSubtaskIdsSet.has(subtask.id)) {
               // Update existing subtask
-              return db.update(saleSubtasks)
+              return db!.update(saleSubtasks)
                 .set({
                   text: subtaskValues.text,
                   completed: subtaskValues.completed
@@ -334,7 +334,7 @@ export async function POST(request: Request) {
                 .where(eq(saleSubtasks.id, subtask.id))
             } else {
               // Insert new subtask
-              return db.insert(saleSubtasks).values(subtaskValues)
+              return db!.insert(saleSubtasks).values(subtaskValues)
             }
           })
           
