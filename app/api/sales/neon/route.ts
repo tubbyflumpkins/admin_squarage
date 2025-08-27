@@ -316,7 +316,7 @@ export async function POST(request: Request) {
           const existingSaleSubtaskIdsSet = new Set(existingSaleSubtasksList.map(s => s.id))
           
           // Then create promises for all subtask operations
-          const subtaskPromises = saleSubtaskList.map(subtask => {
+          const subtaskPromises = saleSubtaskList.map((subtask: any) => {
             const subtaskValues = {
               id: subtask.id,
               saleId: sale.id,
