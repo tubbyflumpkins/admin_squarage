@@ -1,5 +1,5 @@
 // Service Worker for Squarage Admin PWA
-const CACHE_NAME = 'squarage-admin-v2';
+const CACHE_NAME = 'squarage-admin-v4'; // Increment to force cache update
 const urlsToCache = [
   '/manifest.json',
   '/images/favicon.png',
@@ -47,19 +47,29 @@ self.addEventListener('fetch', (event) => {
 
   // Skip caching for these paths - they need to always go to network
   const skipCache = [
-    '/api/auth',
+    '/api/',  // Skip ALL API routes to prevent authentication issues
     '/login',
     '/_next/webpack-hmr',
     '/_next/static/development'
   ];
   
   if (skipCache.some(path => url.pathname.startsWith(path))) {
-    event.respondWith(fetch(request));
+    // For API routes, ensure credentials are included
+    if (url.pathname.startsWith('/api/')) {
+      event.respondWith(
+        fetch(request, { 
+          credentials: 'include',
+          headers: request.headers
+        })
+      );
+    } else {
+      event.respondWith(fetch(request));
+    }
     return;
   }
 
-  // Network-first strategy for API calls and HTML pages
-  if (url.pathname.startsWith('/api/') || request.mode === 'navigate') {
+  // Network-first strategy for HTML pages only (API calls are already handled above)
+  if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -73,16 +83,12 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // If network fails and it's a navigation request, try cache
-          if (request.mode === 'navigate') {
-            return caches.match(request).then(response => {
-              if (response) return response;
-              // Return offline page if available
-              return caches.match('/offline.html');
-            });
-          }
-          // For API calls, try cache as fallback
-          return caches.match(request);
+          // If network fails, try cache
+          return caches.match(request).then(response => {
+            if (response) return response;
+            // Return offline page if available
+            return caches.match('/offline.html');
+          });
         })
     );
     return;

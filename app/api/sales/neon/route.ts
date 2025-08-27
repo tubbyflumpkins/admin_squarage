@@ -263,9 +263,15 @@ export async function POST(request: Request) {
       )
     }
     
-    // Step 4: UPSERT sales and subtasks
+    // Step 4: UPSERT sales and subtasks - process in batches for better performance
     if (data.sales && data.sales.length > 0) {
-      for (const sale of data.sales) {
+      // Process sales in smaller batches to avoid too many concurrent queries
+      const BATCH_SIZE = 5
+      for (let i = 0; i < data.sales.length; i += BATCH_SIZE) {
+        const saleBatch = data.sales.slice(i, i + BATCH_SIZE)
+        const salePromises = []
+        
+        for (const sale of saleBatch) {
         const { subtasks: saleSubtaskList, ...saleData } = sale
         
         const saleValues = {
@@ -282,35 +288,35 @@ export async function POST(request: Request) {
           updatedAt: new Date(saleData.updatedAt)
         }
         
-        if (existingSaleIds.has(sale.id)) {
-          // Update existing sale
-          await db.update(sales)
-            .set({
-              name: saleValues.name,
-              productId: saleValues.productId,
-              revenue: saleValues.revenue,
-              selectedColor: saleValues.selectedColor,
-              placementDate: saleValues.placementDate,
-              deliveryMethod: saleValues.deliveryMethod,
-              status: saleValues.status,
-              notes: saleValues.notes,
-              updatedAt: saleValues.updatedAt
-            })
-            .where(eq(sales.id, sale.id))
-        } else {
-          // Insert new sale
-          await db.insert(sales).values(saleValues)
-        }
+        // Create promise for sale upsert
+        const salePromise = existingSaleIds.has(sale.id)
+          ? db.update(sales)
+              .set({
+                name: saleValues.name,
+                productId: saleValues.productId,
+                revenue: saleValues.revenue,
+                selectedColor: saleValues.selectedColor,
+                placementDate: saleValues.placementDate,
+                deliveryMethod: saleValues.deliveryMethod,
+                status: saleValues.status,
+                notes: saleValues.notes,
+                updatedAt: saleValues.updatedAt
+              })
+              .where(eq(sales.id, sale.id))
+          : db.insert(sales).values(saleValues)
         
-        // Handle subtasks
+        salePromises.push(salePromise)
+        
+        // Handle subtasks for this sale
         if (saleSubtaskList && saleSubtaskList.length > 0) {
-          // Get existing subtasks for this sale
+          // First get existing subtasks (this needs to be sequential)
           const existingSaleSubtasksList = await db.select({ id: saleSubtasks.id })
             .from(saleSubtasks)
             .where(eq(saleSubtasks.saleId, sale.id))
           const existingSaleSubtaskIdsSet = new Set(existingSaleSubtasksList.map(s => s.id))
           
-          for (const subtask of saleSubtaskList) {
+          // Then create promises for all subtask operations
+          const subtaskPromises = saleSubtaskList.map((subtask: any) => {
             const subtaskValues = {
               id: subtask.id,
               saleId: sale.id,
@@ -320,7 +326,7 @@ export async function POST(request: Request) {
             
             if (existingSaleSubtaskIdsSet.has(subtask.id)) {
               // Update existing subtask
-              await db.update(saleSubtasks)
+              return db!.update(saleSubtasks)
                 .set({
                   text: subtaskValues.text,
                   completed: subtaskValues.completed
@@ -328,15 +334,23 @@ export async function POST(request: Request) {
                 .where(eq(saleSubtasks.id, subtask.id))
             } else {
               // Insert new subtask
-              await db.insert(saleSubtasks).values(subtaskValues)
+              return db!.insert(saleSubtasks).values(subtaskValues)
             }
-          }
+          })
+          
+          salePromises.push(...subtaskPromises)
         }
+      }
+      
+      // Execute all operations for this batch in parallel
+      await Promise.all(salePromises)
       }
     }
     
-    // Step 5: UPSERT collections
+    // Step 5: UPSERT collections in parallel
     if (data.collections && data.collections.length > 0) {
+      const collectionPromises = []
+      
       for (const collection of data.collections) {
         const collectionValues = {
           id: collection.id,
@@ -348,22 +362,30 @@ export async function POST(request: Request) {
         
         if (existingCollectionIds.has(collection.id)) {
           // Update existing collection
-          await db.update(collections)
-            .set({
-              name: collectionValues.name,
-              color: collectionValues.color,
-              availableColors: collectionValues.availableColors
-            })
-            .where(eq(collections.id, collection.id))
+          collectionPromises.push(
+            db.update(collections)
+              .set({
+                name: collectionValues.name,
+                color: collectionValues.color,
+                availableColors: collectionValues.availableColors
+              })
+              .where(eq(collections.id, collection.id))
+          )
         } else {
           // Insert new collection
-          await db.insert(collections).values(collectionValues)
+          collectionPromises.push(
+            db.insert(collections).values(collectionValues)
+          )
         }
       }
+      
+      await Promise.all(collectionPromises)
     }
     
-    // Step 6: UPSERT products
+    // Step 6: UPSERT products in parallel
     if (data.products && data.products.length > 0) {
+      const productPromises = []
+      
       for (const product of data.products) {
         const productValues = {
           id: product.id,
@@ -375,18 +397,24 @@ export async function POST(request: Request) {
         
         if (existingProductIds.has(product.id)) {
           // Update existing product
-          await db.update(products)
-            .set({
-              name: productValues.name,
-              revenue: productValues.revenue,
-              collectionId: productValues.collectionId
-            })
-            .where(eq(products.id, product.id))
+          productPromises.push(
+            db.update(products)
+              .set({
+                name: productValues.name,
+                revenue: productValues.revenue,
+                collectionId: productValues.collectionId
+              })
+              .where(eq(products.id, product.id))
+          )
         } else {
           // Insert new product
-          await db.insert(products).values(productValues)
+          productPromises.push(
+            db.insert(products).values(productValues)
+          )
         }
       }
+      
+      await Promise.all(productPromises)
     }
     
     return NextResponse.json({ success: true, method: 'upsert' })

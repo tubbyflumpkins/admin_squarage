@@ -81,10 +81,23 @@ const useSalesStore = create<SalesStore>((set, get) => ({
     
     try {
       console.log('Loading sales data from server...')
-      const response = await fetch('/api/sales/neon')
+      const response = await fetch('/api/sales/neon', {
+        credentials: 'include' // Ensure cookies are sent with request
+      })
       
       if (!response.ok) {
         console.error(`Sales API returned ${response.status}: ${response.statusText}`)
+        
+        // Handle authentication errors specifically
+        if (response.status === 401) {
+          console.error('Authentication error - redirecting to login')
+          // In a browser environment, redirect to login
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login'
+          }
+          throw new Error('Authentication required')
+        }
+        
         const errorText = await response.text()
         console.error('Error response:', errorText)
         throw new Error(`Failed to load sales data: ${response.status}`)
@@ -158,6 +171,7 @@ const useSalesStore = create<SalesStore>((set, get) => ({
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include', // Ensure cookies are sent with request
           body: JSON.stringify({
             sales: state.sales,
             collections: state.collections,
@@ -166,6 +180,16 @@ const useSalesStore = create<SalesStore>((set, get) => ({
         })
         
         if (!response.ok) {
+          // Handle authentication errors specifically
+          if (response.status === 401) {
+            console.error('Authentication error while saving sales - redirecting to login')
+            // In a browser environment, redirect to login
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login'
+            }
+            return
+          }
+          
           const errorData = await response.json()
           if (errorData.blocked) {
             console.error('CRITICAL: Server blocked empty state save to prevent data loss')

@@ -1,11 +1,11 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ClipboardList, DollarSign, Settings } from 'lucide-react'
+import { ClipboardList, DollarSign, Calendar, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface MobileTabBarProps {
-  currentTab: 'todo' | 'sales' | 'settings'
+  currentTab: 'todo' | 'sales' | 'calendar' | 'settings'
 }
 
 export default function MobileTabBar({ currentTab }: MobileTabBarProps) {
@@ -23,6 +23,12 @@ export default function MobileTabBar({ currentTab }: MobileTabBarProps) {
       label: 'Sales',
       icon: DollarSign,
       path: '/sales'
+    },
+    {
+      id: 'calendar' as const,
+      label: 'Calendar',
+      icon: Calendar,
+      path: '/calendar'
     },
     {
       id: 'settings' as const,

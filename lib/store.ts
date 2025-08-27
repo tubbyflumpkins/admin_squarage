@@ -86,10 +86,23 @@ const useTodoStore = create<TodoStore>((set, get) => ({
     
     try {
       console.log('Loading data from server...')
-      const response = await fetch('/api/todos/neon')
+      const response = await fetch('/api/todos/neon', {
+        credentials: 'include' // Ensure cookies are sent with request
+      })
       
       if (!response.ok) {
         console.error(`API returned ${response.status}: ${response.statusText}`)
+        
+        // Handle authentication errors specifically
+        if (response.status === 401) {
+          console.error('Authentication error - redirecting to login')
+          // In a browser environment, redirect to login
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login'
+          }
+          throw new Error('Authentication required')
+        }
+        
         const errorText = await response.text()
         console.error('Error response:', errorText)
         throw new Error(`Failed to load data: ${response.status}`)
@@ -175,10 +188,21 @@ const useTodoStore = create<TodoStore>((set, get) => ({
         const response = await fetch('/api/todos/neon', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Ensure cookies are sent with request
           body: JSON.stringify(dataToSave)
         })
         
         if (!response.ok) {
+          // Handle authentication errors specifically
+          if (response.status === 401) {
+            console.error('Authentication error while saving - redirecting to login')
+            // In a browser environment, redirect to login
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login'
+            }
+            return
+          }
+          
           const errorData = await response.json()
           if (errorData.blocked) {
             console.error('Server blocked the save:', errorData.error)

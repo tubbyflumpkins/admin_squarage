@@ -144,6 +144,58 @@ export const saleSubtasksRelations = relations(saleSubtasks, ({ one }) => ({
   }),
 }))
 
+// Calendar Types table
+export const calendarTypes = pgTable('calendar_types', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  color: varchar('color', { length: 7 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Calendar Events table
+export const calendarEvents = pgTable('calendar_events', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  title: text('title').notNull(),
+  description: text('description'),
+  location: text('location'),
+  calendarTypeId: varchar('calendar_type_id', { length: 255 }).references(() => calendarTypes.id, { onDelete: 'set null' }),
+  startTime: timestamp('start_time').notNull(),
+  endTime: timestamp('end_time').notNull(),
+  allDay: boolean('all_day').default(false).notNull(),
+  recurringPattern: varchar('recurring_pattern', { length: 50 }), // 'none', 'daily', 'weekly', 'monthly', 'yearly'
+  recurringEndDate: timestamp('recurring_end_date'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Event Reminders table
+export const eventReminders = pgTable('event_reminders', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  eventId: varchar('event_id', { length: 255 }).notNull().references(() => calendarEvents.id, { onDelete: 'cascade' }),
+  minutesBefore: integer('minutes_before').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Define calendar relations
+export const calendarTypesRelations = relations(calendarTypes, ({ many }) => ({
+  events: many(calendarEvents),
+}))
+
+export const calendarEventsRelations = relations(calendarEvents, ({ one, many }) => ({
+  calendarType: one(calendarTypes, {
+    fields: [calendarEvents.calendarTypeId],
+    references: [calendarTypes.id],
+  }),
+  reminders: many(eventReminders),
+}))
+
+export const eventRemindersRelations = relations(eventReminders, ({ one }) => ({
+  event: one(calendarEvents, {
+    fields: [eventReminders.eventId],
+    references: [calendarEvents.id],
+  }),
+}))
+
 // Type exports for TypeScript
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
@@ -163,3 +215,9 @@ export type Sale = typeof sales.$inferSelect
 export type NewSale = typeof sales.$inferInsert
 export type SaleSubtask = typeof saleSubtasks.$inferSelect
 export type NewSaleSubtask = typeof saleSubtasks.$inferInsert
+export type CalendarType = typeof calendarTypes.$inferSelect
+export type NewCalendarType = typeof calendarTypes.$inferInsert
+export type CalendarEvent = typeof calendarEvents.$inferSelect
+export type NewCalendarEvent = typeof calendarEvents.$inferInsert
+export type EventReminder = typeof eventReminders.$inferSelect
+export type NewEventReminder = typeof eventReminders.$inferInsert
