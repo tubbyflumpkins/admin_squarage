@@ -31,6 +31,16 @@
     @apply bg-opacity-80;
   }
 
+  /* Completely hide scrollbar while maintaining scroll functionality */
+  .scrollbar-none {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;
   }

@@ -237,112 +237,152 @@ export async function POST(request: Request) {
       )
     }
     
-    // Step 4: UPSERT categories
+    // Step 4: UPSERT categories in parallel batches
     if (data.categories && data.categories.length > 0) {
+      const categoryPromises = []
+      
       for (const category of data.categories) {
         if (existingCategoryIds.has(category.id)) {
           // Update existing
-          await db.update(categories)
-            .set({
-              name: category.name,
-              color: category.color
-            })
-            .where(eq(categories.id, category.id))
+          categoryPromises.push(
+            db.update(categories)
+              .set({
+                name: category.name,
+                color: category.color
+              })
+              .where(eq(categories.id, category.id))
+          )
         } else {
-          // Insert new
-          await db.insert(categories).values(category)
+          // Insert new - ensure createdAt is a proper Date object
+          const categoryValues = {
+            id: category.id,
+            name: category.name,
+            color: category.color,
+            createdAt: category.createdAt ? new Date(category.createdAt) : new Date()
+          }
+          categoryPromises.push(
+            db.insert(categories).values(categoryValues)
+          )
         }
       }
+      
+      await Promise.all(categoryPromises)
     }
     
-    // Step 5: UPSERT owners
+    // Step 5: UPSERT owners in parallel batches
     if (data.owners && data.owners.length > 0) {
+      const ownerPromises = []
+      
       for (const owner of data.owners) {
         if (existingOwnerIds.has(owner.id)) {
           // Update existing
-          await db.update(owners)
-            .set({
-              name: owner.name,
-              color: owner.color
-            })
-            .where(eq(owners.id, owner.id))
+          ownerPromises.push(
+            db.update(owners)
+              .set({
+                name: owner.name,
+                color: owner.color
+              })
+              .where(eq(owners.id, owner.id))
+          )
         } else {
-          // Insert new
-          await db.insert(owners).values(owner)
+          // Insert new - ensure createdAt is a proper Date object
+          const ownerValues = {
+            id: owner.id,
+            name: owner.name,
+            color: owner.color,
+            createdAt: owner.createdAt ? new Date(owner.createdAt) : new Date()
+          }
+          ownerPromises.push(
+            db.insert(owners).values(ownerValues)
+          )
         }
       }
+      
+      await Promise.all(ownerPromises)
     }
     
-    // Step 6: UPSERT todos and subtasks
+    // Step 6: UPSERT todos and subtasks - process in batches for better performance
     if (data.todos && data.todos.length > 0) {
-      for (const todo of data.todos) {
-        const { subtasks: todoSubtasks, ...todoData } = todo
+      // Process todos in smaller batches to avoid too many concurrent queries
+      const BATCH_SIZE = 5
+      for (let i = 0; i < data.todos.length; i += BATCH_SIZE) {
+        const todoBatch = data.todos.slice(i, i + BATCH_SIZE)
+        const todoPromises = []
         
-        const todoValues = {
-          id: todoData.id,
-          title: todoData.title,
-          category: todoData.category,
-          owner: todoData.owner,
-          userId: session.user.id, // Associate with current user
-          priority: todoData.priority,
-          status: todoData.status,
-          dueDate: todoData.dueDate ? new Date(todoData.dueDate) : null,
-          completed: todoData.completed,
-          notes: todoData.notes || null,
-          createdAt: new Date(todoData.createdAt),
-          updatedAt: new Date(todoData.updatedAt)
-        }
-        
-        if (existingTodoIds.has(todo.id)) {
-          // Update existing todo
-          await db.update(todos)
-            .set({
-              title: todoValues.title,
-              category: todoValues.category,
-              owner: todoValues.owner,
-              priority: todoValues.priority,
-              status: todoValues.status,
-              dueDate: todoValues.dueDate,
-              completed: todoValues.completed,
-              notes: todoValues.notes,
-              updatedAt: todoValues.updatedAt
-            })
-            .where(eq(todos.id, todo.id))
-        } else {
-          // Insert new todo
-          await db.insert(todos).values(todoValues)
-        }
-        
-        // Handle subtasks
-        if (todoSubtasks && todoSubtasks.length > 0) {
-          // Get existing subtasks for this todo
-          const existingTodoSubtasks = await db.select({ id: subtasks.id })
-            .from(subtasks)
-            .where(eq(subtasks.todoId, todo.id))
-          const existingTodoSubtaskIds = new Set(existingTodoSubtasks.map(s => s.id))
+        for (const todo of todoBatch) {
+          const { subtasks: todoSubtasks, ...todoData } = todo
           
-          for (const subtask of todoSubtasks) {
-            const subtaskValues = {
-              id: subtask.id,
-              todoId: todo.id,
-              text: subtask.text,
-              completed: subtask.completed
-            }
-            
-            if (existingTodoSubtaskIds.has(subtask.id)) {
-              // Update existing subtask
-              await db.update(subtasks)
+          const todoValues = {
+            id: todoData.id,
+            title: todoData.title,
+            category: todoData.category,
+            owner: todoData.owner,
+            userId: session.user.id, // Associate with current user
+            priority: todoData.priority,
+            status: todoData.status,
+            dueDate: todoData.dueDate ? new Date(todoData.dueDate) : null,
+            completed: todoData.completed,
+            notes: todoData.notes || null,
+            createdAt: new Date(todoData.createdAt),
+            updatedAt: new Date(todoData.updatedAt)
+          }
+          
+          // Create promise for todo upsert
+          const todoPromise = existingTodoIds.has(todo.id)
+            ? db.update(todos)
                 .set({
-                  text: subtaskValues.text,
-                  completed: subtaskValues.completed
+                  title: todoValues.title,
+                  category: todoValues.category,
+                  owner: todoValues.owner,
+                  priority: todoValues.priority,
+                  status: todoValues.status,
+                  dueDate: todoValues.dueDate,
+                  completed: todoValues.completed,
+                  notes: todoValues.notes,
+                  updatedAt: todoValues.updatedAt
                 })
-                .where(eq(subtasks.id, subtask.id))
-            } else {
-              // Insert new subtask
-              await db.insert(subtasks).values(subtaskValues)
-            }
+                .where(eq(todos.id, todo.id))
+            : db.insert(todos).values(todoValues)
+          
+          todoPromises.push(todoPromise)
+          
+          // Handle subtasks for this todo
+          if (todoSubtasks && todoSubtasks.length > 0) {
+            // First get existing subtasks (this needs to be sequential)
+            const existingTodoSubtasks = await db.select({ id: subtasks.id })
+              .from(subtasks)
+              .where(eq(subtasks.todoId, todo.id))
+            const existingTodoSubtaskIds = new Set(existingTodoSubtasks.map(s => s.id))
+            
+            // Then create promises for all subtask operations
+            const subtaskPromises = todoSubtasks.map(subtask => {
+              const subtaskValues = {
+                id: subtask.id,
+                todoId: todo.id,
+                text: subtask.text,
+                completed: subtask.completed
+              }
+              
+              if (existingTodoSubtaskIds.has(subtask.id)) {
+                // Update existing subtask
+                return db.update(subtasks)
+                  .set({
+                    text: subtaskValues.text,
+                    completed: subtaskValues.completed
+                  })
+                  .where(eq(subtasks.id, subtask.id))
+              } else {
+                // Insert new subtask
+                return db.insert(subtasks).values(subtaskValues)
+              }
+            })
+            
+            todoPromises.push(...subtaskPromises)
           }
         }
+        
+        // Execute all operations for this batch in parallel
+        await Promise.all(todoPromises)
       }
     }
     

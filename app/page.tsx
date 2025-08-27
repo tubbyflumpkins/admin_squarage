@@ -7,6 +7,7 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import Header from '@/components/UI/Header'
 import TodoWidget from '@/components/TodoList/TodoWidget'
 import SalesWidget from '@/components/SalesList/SalesWidget'
+import CalendarWidget from '@/components/Calendar/CalendarWidget'
 import MobileLayout from '@/components/Mobile/Layout/MobileLayout'
 
 export default function Home() {
@@ -76,6 +77,7 @@ export default function Home() {
           {/* READ-ONLY widget that cannot modify database */}
           <TodoWidget />
           <SalesWidget />
+          <CalendarWidget />
         </div>
       </main>
     </div>

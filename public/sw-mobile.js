@@ -1,5 +1,5 @@
 // Mobile-optimized Service Worker for Squarage Admin PWA
-const CACHE_NAME = 'squarage-mobile-v1';
+const CACHE_NAME = 'squarage-mobile-v2'; // Increment to force cache update
 const urlsToCache = [
   '/manifest.json',
   '/images/favicon.png',
@@ -53,7 +53,17 @@ self.addEventListener('fetch', (event) => {
   ];
   
   if (neverCache.some(path => url.pathname.includes(path))) {
-    event.respondWith(fetch(request));
+    // For API routes, ensure credentials are included
+    if (url.pathname.startsWith('/api/')) {
+      event.respondWith(
+        fetch(request, { 
+          credentials: 'include',
+          headers: request.headers
+        })
+      );
+    } else {
+      event.respondWith(fetch(request));
+    }
     return;
   }
 
