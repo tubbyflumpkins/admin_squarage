@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         if (typeIds.length > 0) {
           await db
             .delete(calendarTypes)
-            .where(sql`${calendarTypes.id} NOT IN (${sql.join(typeIds.map(id => sql`${id}`), sql`, `)})`)
+            .where(sql`${calendarTypes.id} NOT IN (${sql.join(typeIds.map((id: string) => sql`${id}`), sql`, `)})`)
         }
       } else if (!hasExistingData) {
         // If no existing data and no new types, that's okay for initial setup
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
         if (eventIds.length > 0) {
           await db
             .delete(calendarEvents)
-            .where(sql`${calendarEvents.id} NOT IN (${sql.join(eventIds.map(id => sql`${id}`), sql`, `)})`)
+            .where(sql`${calendarEvents.id} NOT IN (${sql.join(eventIds.map((id: string) => sql`${id}`), sql`, `)})`)
         } else {
           // If no events in the data, delete all events
           await db.delete(calendarEvents).where(sql`1=1`)
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
         if (reminderIds.length > 0) {
           await db
             .delete(eventReminders)
-            .where(sql`${eventReminders.id} NOT IN (${sql.join(reminderIds.map(id => sql`${id}`), sql`, `)})`)
+            .where(sql`${eventReminders.id} NOT IN (${sql.join(reminderIds.map((id: string) => sql`${id}`), sql`, `)})`)
         }
       } else {
         // Delete all reminders if none provided
