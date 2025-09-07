@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import Header from '@/components/UI/Header'
 import MobileLayout from '@/components/Mobile/Layout/MobileLayout'
-import { User, Lock, Save, Eye, EyeOff, Check, X } from 'lucide-react'
+import { User, Lock, Save, Eye, EyeOff, Check, X, LogOut } from 'lucide-react'
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
@@ -92,151 +92,171 @@ export default function SettingsPage() {
       <h1 className="text-3xl font-bold text-white mb-8">Settings</h1>
 
       {/* User Info Section */}
-      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-6 border border-white/20">
-        <div className="flex items-center gap-3 mb-4">
-          <User className="h-6 w-6 text-white/70" />
-          <h2 className="text-xl font-semibold text-white">User Information</h2>
+      <div className="relative backdrop-blur-md bg-white/35 rounded-2xl shadow-2xl border border-white/40 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <User className="h-6 w-6 text-white" />
+            <h2 className="text-xl font-semibold text-white">User Information</h2>
+          </div>
+          {/* Logout Button */}
+          <button
+            onClick={() => {
+              // Clear service worker cache on mobile before logout
+              if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' })
+              }
+              signOut()
+            }}
+            className="flex items-center gap-2 px-4 py-2 backdrop-blur-sm bg-red-600/40 rounded-xl border border-red-600/50 text-white font-medium hover:bg-red-600/50 hover:scale-105 hover:shadow-2xl hover:-translate-y-0.5 transition-all duration-200 transform shadow-lg"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="text-sm">Logout</span>
+          </button>
         </div>
-        <div className="space-y-2 text-white/90">
-          <p><span className="text-white/60">Name:</span> {session.user?.name}</p>
-          <p><span className="text-white/60">Email:</span> {session.user?.email}</p>
-          <p><span className="text-white/60">Role:</span> {session.user?.role || 'User'}</p>
+        <div className="bg-squarage-white/50 rounded-lg p-4">
+          <div className="space-y-2 text-brown-dark">
+            <p><span className="text-brown-medium">Name:</span> {session.user?.name}</p>
+            <p><span className="text-brown-medium">Email:</span> {session.user?.email}</p>
+            <p><span className="text-brown-medium">Role:</span> {session.user?.role || 'User'}</p>
+          </div>
         </div>
       </div>
 
       {/* Change Password Section */}
-      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-        <div className="flex items-center gap-3 mb-6">
-          <Lock className="h-6 w-6 text-white/70" />
+      <div className="relative backdrop-blur-md bg-white/35 rounded-2xl shadow-2xl border border-white/40 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Lock className="h-6 w-6 text-white" />
           <h2 className="text-xl font-semibold text-white">Change Password</h2>
         </div>
 
-        <form onSubmit={handlePasswordChange} className="space-y-4">
-          {/* Current Password */}
-          <div>
-            <label className="block text-sm font-medium text-white/90 mb-2">
-              Current Password
-            </label>
-            <div className="relative">
-              <input
-                type={showCurrentPassword ? 'text' : 'password'}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-squarage-yellow focus:border-transparent backdrop-blur-sm"
-                placeholder="Enter current password"
-                required
-                disabled={isChangingPassword}
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                tabIndex={-1}
-              >
-                {showCurrentPassword ? (
-                  <EyeOff className="h-5 w-5 text-white/50 hover:text-white/70" />
+        <div className="bg-squarage-white/50 rounded-lg p-4">
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            {/* Current Password */}
+            <div>
+              <label className="block text-sm font-medium text-brown-dark mb-2">
+                Current Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/70 border border-brown-light/30 rounded-lg text-brown-dark placeholder-brown-light focus:outline-none focus:ring-2 focus:ring-squarage-green focus:border-transparent"
+                  placeholder="Enter current password"
+                  required
+                  disabled={isChangingPassword}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  tabIndex={-1}
+                >
+                  {showCurrentPassword ? (
+                    <EyeOff className="h-5 w-5 text-brown-medium hover:text-brown-dark" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-brown-medium hover:text-brown-dark" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* New Password */}
+            <div>
+              <label className="block text-sm font-medium text-brown-dark mb-2">
+                New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/70 border border-brown-light/30 rounded-lg text-brown-dark placeholder-brown-light focus:outline-none focus:ring-2 focus:ring-squarage-green focus:border-transparent"
+                  placeholder="Enter new password (min 6 characters)"
+                  required
+                  disabled={isChangingPassword}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  tabIndex={-1}
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-5 w-5 text-brown-medium hover:text-brown-dark" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-brown-medium hover:text-brown-dark" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-sm font-medium text-brown-dark mb-2">
+                Confirm New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/70 border border-brown-light/30 rounded-lg text-brown-dark placeholder-brown-light focus:outline-none focus:ring-2 focus:ring-squarage-green focus:border-transparent"
+                  placeholder="Confirm new password"
+                  required
+                  disabled={isChangingPassword}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-5 w-5 text-brown-medium hover:text-brown-dark" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-brown-medium hover:text-brown-dark" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Message */}
+            {message && (
+              <div className={`flex items-center gap-2 p-3 rounded-lg ${
+                message.type === 'success' 
+                  ? 'bg-green-500/20 border border-green-500/50 text-green-700' 
+                  : 'bg-red-500/20 border border-red-500/50 text-red-700'
+              }`}>
+                {message.type === 'success' ? (
+                  <Check className="h-5 w-5" />
                 ) : (
-                  <Eye className="h-5 w-5 text-white/50 hover:text-white/70" />
+                  <X className="h-5 w-5" />
                 )}
-              </button>
-            </div>
-          </div>
-
-          {/* New Password */}
-          <div>
-            <label className="block text-sm font-medium text-white/90 mb-2">
-              New Password
-            </label>
-            <div className="relative">
-              <input
-                type={showNewPassword ? 'text' : 'password'}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-squarage-yellow focus:border-transparent backdrop-blur-sm"
-                placeholder="Enter new password (min 6 characters)"
-                required
-                disabled={isChangingPassword}
-              />
-              <button
-                type="button"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                tabIndex={-1}
-              >
-                {showNewPassword ? (
-                  <EyeOff className="h-5 w-5 text-white/50 hover:text-white/70" />
-                ) : (
-                  <Eye className="h-5 w-5 text-white/50 hover:text-white/70" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Confirm Password */}
-          <div>
-            <label className="block text-sm font-medium text-white/90 mb-2">
-              Confirm New Password
-            </label>
-            <div className="relative">
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-squarage-yellow focus:border-transparent backdrop-blur-sm"
-                placeholder="Confirm new password"
-                required
-                disabled={isChangingPassword}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                tabIndex={-1}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-5 w-5 text-white/50 hover:text-white/70" />
-                ) : (
-                  <Eye className="h-5 w-5 text-white/50 hover:text-white/70" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Message */}
-          {message && (
-            <div className={`flex items-center gap-2 p-3 rounded-lg ${
-              message.type === 'success' 
-                ? 'bg-green-500/20 border border-green-500/50 text-green-200' 
-                : 'bg-red-500/20 border border-red-500/50 text-red-200'
-            }`}>
-              {message.type === 'success' ? (
-                <Check className="h-5 w-5" />
-              ) : (
-                <X className="h-5 w-5" />
-              )}
-              <p className="text-sm">{message.text}</p>
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isChangingPassword}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-squarage-yellow text-squarage-black font-semibold py-3 px-6 rounded-lg hover:bg-squarage-yellow/90 focus:outline-none focus:ring-2 focus:ring-squarage-yellow focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isChangingPassword ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-squarage-black"></div>
-                <span>Changing...</span>
-              </>
-            ) : (
-              <>
-                <Save className="h-5 w-5" />
-                <span>Change Password</span>
-              </>
+                <p className="text-sm">{message.text}</p>
+              </div>
             )}
-          </button>
-        </form>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isChangingPassword}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-squarage-green text-white font-semibold py-3 px-6 rounded-lg hover:bg-squarage-green/90 focus:outline-none focus:ring-2 focus:ring-squarage-green focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isChangingPassword ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Changing...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="h-5 w-5" />
+                  <span>Change Password</span>
+                </>
+              )}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )
