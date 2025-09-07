@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import useCalendarStore from '@/lib/calendarStore'
-import { format, isToday, isTomorrow, startOfDay, endOfDay, addDays } from 'date-fns'
+import { format, isToday, isTomorrow, startOfDay, endOfDay, addDays, isSameDay } from 'date-fns'
 
 export default function CalendarWidget() {
   const router = useRouter()
@@ -23,12 +22,19 @@ export default function CalendarWidget() {
     })
   }, [loadFromServer])
   
-  // Get today's and tomorrow's events
+  // Get all upcoming events (from start of today onwards)
   const today = new Date()
-  const tomorrow = addDays(today, 1)
-  const todayEvents = getEventsForDateRange(startOfDay(today), endOfDay(today))
-  const tomorrowEvents = getEventsForDateRange(startOfDay(tomorrow), endOfDay(tomorrow))
-  const upcomingEvents = [...todayEvents, ...tomorrowEvents].slice(0, 5)
+  const startOfToday = startOfDay(today)
+  
+  // Filter all events to get events from today onwards (including past events from today)
+  const upcomingEvents = events.filter(event => {
+    const eventTime = new Date(event.startTime)
+    return eventTime >= startOfToday
+  })
+  
+  // Sort by date and take the first 5
+  upcomingEvents.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+  const displayEvents = upcomingEvents.slice(0, 5)
   
   const getEventColor = (event: any) => {
     const type = calendarTypes.find(t => t.id === event.calendarTypeId)
@@ -53,11 +59,18 @@ export default function CalendarWidget() {
   
   if (!isHydrated) {
     return (
-      <div className="bg-white/35 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] border border-white/40">
-        <h2 className="text-xl font-bold text-white drop-shadow-lg mb-4">Calendar</h2>
-        <div className="bg-white/50 rounded-xl p-4">
-          <div className="text-center py-8 text-gray-600">
-            Loading events...
+      <div className="relative backdrop-blur-md bg-white/35 rounded-2xl shadow-2xl border border-white/40 p-6 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:shadow-3xl"
+           onClick={handleWidgetClick}>
+        <div className="absolute inset-0 z-10 rounded-2xl" />
+        <div className="relative">
+          <div className="mb-4 flex items-baseline justify-between">
+            <h2 className="text-xl font-bold text-white">Calendar</h2>
+            <span className="text-sm text-white/80">{format(today, 'EEEE, MMM d')}</span>
+          </div>
+          <div className="bg-squarage-white/50 rounded-lg">
+            <div className="flex items-center justify-center py-8 text-brown-medium">
+              Loading events...
+            </div>
           </div>
         </div>
       </div>
@@ -66,79 +79,64 @@ export default function CalendarWidget() {
   
   return (
     <div 
+      className="relative backdrop-blur-md bg-white/35 rounded-2xl shadow-2xl border border-white/40 p-6 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:shadow-3xl"
       onClick={handleWidgetClick}
-      className="bg-white/35 backdrop-blur-md rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] border border-white/40 cursor-pointer group"
     >
-      {/* Title outside the inner pane - white text */}
-      <h2 className="text-xl font-bold text-white drop-shadow-lg mb-4">Calendar</h2>
+      {/* Overlay to prevent interactions with inner content */}
+      <div className="absolute inset-0 z-10 rounded-2xl" />
       
-      {/* Inner pane with lighter background - black text */}
-      <div className="bg-white/50 rounded-xl p-4">
-        {/* Today's Date */}
-        <div className="mb-4 pb-3 border-b border-gray-200">
-          <div className="text-2xl font-bold text-squarage-green">
-            {format(today, 'EEEE')}
-          </div>
-          <div className="text-sm text-gray-700">
-            {format(today, 'MMMM d, yyyy')}
+      {/* Content - not interactive due to overlay */}
+      <div className="relative">
+        {/* Header with title and date */}
+        <div className="mb-4 flex items-baseline justify-between">
+          <h2 className="text-xl font-bold text-white">Calendar</h2>
+          <span className="text-sm text-white/80">{format(today, 'EEEE, MMM d')}</span>
+        </div>
+
+        {/* Column Headers */}
+        <div className="bg-squarage-white/50 rounded-t-lg border border-brown-light/30">
+          <div className="grid grid-cols-[100px_1fr_80px] text-xs font-medium text-brown-medium uppercase tracking-wider">
+            <div className="px-2 py-1.5 text-center">Date</div>
+            <div className="px-2 py-1.5 border-l border-brown-light/20">Event</div>
+            <div className="px-2 py-1.5 text-center border-l border-brown-light/20">Time</div>
           </div>
         </div>
-        
-        {/* Upcoming Events */}
-        <div className="space-y-2">
-          {upcomingEvents.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-gray-600 mb-2">No upcoming events</p>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  router.push('/calendar')
-                }}
-                className="text-sm text-squarage-green hover:text-squarage-green/80 font-medium"
-              >
-                Add an event
-              </button>
-            </div>
-          ) : (
-            <>
-              {upcomingEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex items-start gap-3 p-2 rounded-lg hover:bg-white/30 transition-colors"
-                >
-                  <div 
-                    className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
-                    style={{ backgroundColor: getEventColor(event) }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 truncate">
+
+        {/* Events List */}
+        <div className="border-x border-b border-brown-light/30 rounded-b-lg bg-squarage-white overflow-hidden">
+          <div className="divide-y divide-brown-light/20">
+            {displayEvents.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <p className="text-brown-medium text-lg font-medium mb-2">No upcoming events</p>
+                <p className="text-brown-light text-sm">Click to view the calendar</p>
+              </div>
+            ) : (
+              displayEvents.map((event) => (
+                <div key={event.id} className="grid grid-cols-[100px_1fr_80px] text-sm hover:bg-squarage-white/30">
+                  {/* Date */}
+                  <div className="px-2 py-1.5 text-center text-brown-medium">
+                    <span className="font-medium">{getEventDateLabel(event)}</span>
+                  </div>
+                  
+                  {/* Event Title with color indicator */}
+                  <div className="px-2 py-1.5 flex items-center gap-2 border-l border-brown-light/20">
+                    <div 
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: getEventColor(event) }}
+                    />
+                    <span className="font-medium text-brown-dark truncate">
                       {event.title}
-                    </div>
-                    <div className="text-xs text-gray-700">
-                      {getEventDateLabel(event)} • {formatEventTime(event)}
-                      {event.location && (
-                        <span className="ml-1">• {event.location}</span>
-                      )}
-                    </div>
+                    </span>
+                  </div>
+                  
+                  {/* Time */}
+                  <div className="px-2 py-1.5 text-center text-brown-medium border-l border-brown-light/20">
+                    {formatEventTime(event)}
                   </div>
                 </div>
-              ))}
-              
-              {(todayEvents.length + tomorrowEvents.length) > 5 && (
-                <div className="text-center pt-2">
-                  <span className="text-xs text-gray-600">
-                    +{(todayEvents.length + tomorrowEvents.length) - 5} more events
-                  </span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-        
-        {/* Quick Stats */}
-        <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between text-xs text-gray-700">
-          <span>{todayEvents.length} events today</span>
-          <span>{tomorrowEvents.length} tomorrow</span>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
