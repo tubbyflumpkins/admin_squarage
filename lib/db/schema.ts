@@ -196,6 +196,17 @@ export const eventRemindersRelations = relations(eventReminders, ({ one }) => ({
   }),
 }))
 
+// Quick Links table
+export const quickLinks = pgTable('quick_links', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  url: text('url').notNull(),
+  faviconUrl: text('favicon_url'),
+  orderIndex: integer('order_index').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 // Type exports for TypeScript
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
@@ -221,3 +232,5 @@ export type CalendarEvent = typeof calendarEvents.$inferSelect
 export type NewCalendarEvent = typeof calendarEvents.$inferInsert
 export type EventReminder = typeof eventReminders.$inferSelect
 export type NewEventReminder = typeof eventReminders.$inferInsert
+export type QuickLink = typeof quickLinks.$inferSelect
+export type NewQuickLink = typeof quickLinks.$inferInsert

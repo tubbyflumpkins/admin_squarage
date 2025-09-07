@@ -8,6 +8,7 @@ import Header from '@/components/UI/Header'
 import TodoWidget from '@/components/TodoList/TodoWidget'
 import SalesWidget from '@/components/SalesList/SalesWidget'
 import CalendarWidget from '@/components/Calendar/CalendarWidget'
+import QuickLinksWidget from '@/components/QuickLinks/QuickLinksWidget'
 import MobileLayout from '@/components/Mobile/Layout/MobileLayout'
 
 export default function Home() {
@@ -78,6 +79,7 @@ export default function Home() {
           <TodoWidget />
           <SalesWidget />
           <CalendarWidget />
+          <QuickLinksWidget />
         </div>
       </main>
     </div>
