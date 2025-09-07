@@ -48,6 +48,12 @@ export default function Header() {
               Calendar
             </Link>
             <Link 
+              href="/quick-links" 
+              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
+            >
+              Quick Links
+            </Link>
+            <Link 
               href="/settings" 
               className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
             >
