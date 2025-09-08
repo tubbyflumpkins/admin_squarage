@@ -186,78 +186,30 @@ export default function NotificationSettings() {
   }
 
   return (
-    <div className="bg-squarage-white/50 rounded-lg p-6 space-y-6">
-      {/* Push Notification Status */}
-      <div className="border-b border-brown-light/20 pb-4">
-        <h3 className="text-lg font-semibold text-brown-dark mb-4">Push Notifications</h3>
-        
-        {!isSupported ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-red-900">Not Supported</p>
-                <p className="text-sm text-red-700 mt-1">
-                  Push notifications are not supported in this browser. Try Chrome, Edge, or Firefox.
-                </p>
-              </div>
+    <div className="bg-squarage-white/50 rounded-lg p-6">
+      {/* Show iOS warning if needed */}
+      {isIOS && !isPWA && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <Smartphone className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-blue-900">iOS Installation Required</p>
+              <p className="text-sm text-blue-700 mt-1">
+                To enable push notifications on iOS:
+              </p>
+              <ol className="text-sm text-blue-700 mt-2 ml-4 list-decimal">
+                <li>Tap the Share button in Safari</li>
+                <li>Select "Add to Home Screen"</li>
+                <li>Open the app from your Home Screen</li>
+                <li>Return here to enable notifications</li>
+              </ol>
             </div>
           </div>
-        ) : isIOS && !isPWA ? (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Smartphone className="h-5 w-5 text-blue-600 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-blue-900">iOS Installation Required</p>
-                <p className="text-sm text-blue-700 mt-1">
-                  To enable push notifications on iOS:
-                </p>
-                <ol className="text-sm text-blue-700 mt-2 ml-4 list-decimal">
-                  <li>Tap the Share button in Safari</li>
-                  <li>Select "Add to Home Screen"</li>
-                  <li>Open the app from your Home Screen</li>
-                  <li>Return here to enable notifications</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-        ) : pushSubscribed ? (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-sm font-medium text-green-900">Push Notifications Active</p>
-                <p className="text-sm text-green-700">You'll receive notifications for the types you've selected below</p>
-              </div>
-            </div>
-          </div>
-        ) : permissionState === 'denied' ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <BellOff className="h-5 w-5 text-red-600" />
-              <div>
-                <p className="text-sm font-medium text-red-900">Notifications Blocked</p>
-                <p className="text-sm text-red-700">Please enable notifications in your browser settings to receive alerts</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5 text-gray-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Ready to Enable</p>
-                <p className="text-sm text-gray-700">Select notification types below to start receiving alerts</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Notification Types */}
-      <div>
-        <h3 className="text-lg font-semibold text-brown-dark mb-4">Notification Types</h3>
-        <div className="space-y-3">
+      <div className="space-y-3">
           <label className="flex items-center justify-between p-3 bg-white/70 rounded-lg hover:bg-white/80 transition-colors cursor-pointer">
             <div>
               <p className="text-sm font-medium text-brown-dark">Task Created</p>
@@ -313,7 +265,6 @@ export default function NotificationSettings() {
               className="h-5 w-5 text-squarage-green rounded focus:ring-squarage-green"
             />
           </label>
-        </div>
       </div>
 
       {/* Test Notification */}
