@@ -113,6 +113,12 @@ export async function sendPushNotification(
   }
 ) {
   try {
+    // Check if database is configured
+    if (!db) {
+      console.error('Database not configured for push notifications')
+      return
+    }
+
     // Get all push subscriptions for this user
     const subscriptions = await db
       .select()
@@ -181,6 +187,10 @@ export async function getUserNotifications(
   offset: number = 0
 ) {
   try {
+    if (!db) {
+      return { notifications: [], total: 0 }
+    }
+    
     const result = await db
       .select()
       .from(notifications)
@@ -201,6 +211,10 @@ export async function getUserNotifications(
  */
 export async function getUnreadCount(userId: string) {
   try {
+    if (!db) {
+      return 0
+    }
+    
     const result = await db
       .select()
       .from(notifications)
@@ -221,6 +235,10 @@ export async function getUnreadCount(userId: string) {
  */
 export async function markAsRead(notificationId: string, userId: string) {
   try {
+    if (!db) {
+      return false
+    }
+    
     await db
       .update(notifications)
       .set({ read: true })
@@ -241,6 +259,10 @@ export async function markAsRead(notificationId: string, userId: string) {
  */
 export async function markAllAsRead(userId: string) {
   try {
+    if (!db) {
+      return false
+    }
+    
     await db
       .update(notifications)
       .set({ read: true })
@@ -261,6 +283,10 @@ export async function markAllAsRead(userId: string) {
  */
 export async function cleanupOldNotifications() {
   try {
+    if (!db) {
+      return { deletedCount: 0 }
+    }
+    
     const sixtyDaysAgo = new Date()
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60)
 
