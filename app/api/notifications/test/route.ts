@@ -23,17 +23,17 @@ export async function POST(request: Request) {
       }
     })
 
-    if (!result.success) {
+    if (!result || (typeof result === 'object' && !result.success)) {
       return NextResponse.json({ 
         error: 'Failed to create test notification',
-        details: result.error
+        details: typeof result === 'object' ? result.error : 'Database not configured'
       }, { status: 500 })
     }
 
     return NextResponse.json({ 
       success: true, 
       message: 'Test notification sent',
-      notificationId: result.notificationId
+      notificationId: typeof result === 'object' ? result.notificationId : undefined
     })
   } catch (error) {
     console.error('Error sending test notification:', error)
