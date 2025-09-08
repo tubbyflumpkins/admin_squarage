@@ -242,7 +242,7 @@ export default function NotificationBell() {
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`px-4 py-3 backdrop-blur-sm transition-all duration-200 cursor-pointer ${
+                    className={`px-4 py-2.5 backdrop-blur-sm transition-all duration-200 cursor-pointer ${
                       !notification.read 
                         ? 'bg-squarage-blue/10 hover:bg-squarage-blue/20' 
                         : 'hover:bg-white/10'
@@ -258,29 +258,26 @@ export default function NotificationBell() {
                       }
                     }}
                   >
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl mt-1">
+                    <div className="flex items-start gap-2">
+                      <span className="text-base flex-shrink-0 mt-0.5">
                         {getNotificationIcon(notification.type)}
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
-                            <p className={`text-sm font-medium text-brown-dark ${
-                              !notification.read ? 'font-semibold' : ''
+                            <p className={`text-sm text-brown-medium ${
+                              !notification.read ? 'font-semibold text-brown-dark' : ''
                             }`}>
-                              {notification.title}
-                            </p>
-                            <p className="text-sm text-brown-medium mt-0.5 line-clamp-2">
                               {notification.message}
+                            </p>
+                            <p className="text-xs text-brown-light mt-0.5">
+                              {formatTimeAgo(notification.createdAt)}
                             </p>
                           </div>
                           {!notification.read && (
-                            <div className="w-2 h-2 bg-squarage-green rounded-full mt-2 flex-shrink-0 animate-pulse" />
+                            <div className="w-2 h-2 bg-squarage-green rounded-full mt-1 flex-shrink-0 animate-pulse" />
                           )}
                         </div>
-                        <p className="text-xs text-brown-light mt-1">
-                          {formatTimeAgo(notification.createdAt)}
-                        </p>
                       </div>
                     </div>
                   </div>

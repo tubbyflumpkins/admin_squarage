@@ -497,13 +497,24 @@ export async function POST(request: Request) {
             const newStatus = statusMap[trigger.todo.status] || trigger.todo.status
             notificationTitle = '✅ Status Changed'
             notificationMessage = `${currentUserName} marked "${trigger.todo.title}" as ${newStatus}`
+            
+            // If task is marked as completed or dead, notify EVERYONE
+            if (trigger.todo.status === 'completed' || trigger.todo.status === 'dead') {
+              // Clear existing recipients and add all users
+              recipientUsers.length = 0
+              recipientUsers.push(...allUsers.map(u => u.id))
+            }
           }
           
-          // Send notification to all recipients (including self for status changes)
+          // Send notification to all recipients
           for (const userId of recipientUsers) {
-            // For status changes, notify everyone including self
+            // For completed/dead status changes, notify everyone including self
+            // For other status changes, notify everyone associated with the task
             // For other types, skip self notification
-            if (trigger.type === 'status_changed' || userId !== session.user.id) {
+            const isCompletedOrDead = trigger.type === 'status_changed' && 
+                                     (trigger.todo.status === 'completed' || trigger.todo.status === 'dead')
+            
+            if (isCompletedOrDead || trigger.type === 'status_changed' || userId !== session.user.id) {
               await createNotification({
                 userId: userId,
                 type: trigger.type === 'created' ? 'task_created' : 
