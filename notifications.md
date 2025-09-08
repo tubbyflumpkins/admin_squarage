@@ -132,12 +132,60 @@ All features have been successfully implemented:
 - ✅ iOS PWA support
 - ✅ Browser push notifications
 
+## Setup Instructions for Production
+
+1. **Environment Variables** - Add to Vercel/production:
+   ```
+   NEXT_PUBLIC_VAPID_PUBLIC_KEY=<your_public_key>
+   VAPID_PUBLIC_KEY=<your_public_key>
+   VAPID_PRIVATE_KEY=<your_private_key>
+   VAPID_SUBJECT=mailto:admin@squarage.com
+   CRON_SECRET=<secure_random_string>
+   ```
+
+2. **Vercel Cron Configuration** - Already configured in vercel.json:
+   - Daily reminders at 8:00 AM PT (15:00 UTC)
+   - Endpoint: `/api/notifications/daily-reminder`
+
+3. **Database Migration** - Tables already created:
+   - notifications
+   - push_subscriptions
+   - notification_preferences
+
+4. **Testing Push Notifications**:
+   - Go to Settings page
+   - Click "Enable" in Notification Settings
+   - Grant browser permission when prompted
+   - Click "Send Test Notification" to verify
+
+## Features Implemented
+
+### Notification Triggers
+- **New Task Created** - Notifies assigned owner
+- **Task Assigned** - Notifies new owner when reassigned
+- **Status Changed** - Notifies owner of status updates
+- **Daily Reminders** - 8 AM PT notification for tasks due today
+
+### User Controls
+- Enable/disable push notifications
+- Toggle individual notification types
+- Test notification button
+- iOS PWA installation detection
+
+### Technical Features
+- Service worker for push handling
+- Real-time bell updates via SSE
+- 30-second polling fallback
+- Cross-tab synchronization
+- Automatic cleanup of expired subscriptions
+- Notification deduplication via tags
+
 ## Notes
-- Service worker will be registered only on supported browsers
-- iOS PWA requires special handling for push registration
-- Real-time updates use SSE with 30-second polling fallback
-- Notifications auto-expire after 60 days
-- Push endpoints validated on each use (remove on 410/404)
+- Service worker registered for all authenticated users
+- iOS requires PWA installation for push support
+- Notifications won't be sent to yourself (self-actions)
+- Push endpoints auto-removed on 410/404 errors
+- All notifications stored in database for history
 
 ## Testing Checklist
 - [ ] Desktop Chrome push
