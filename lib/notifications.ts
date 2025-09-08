@@ -37,7 +37,7 @@ export async function createNotification(payload: NotificationPayload) {
 
     // Create notification record in database
     const notificationId = uuidv4()
-    await db.insert(notifications).values({
+    await db!.insert(notifications).values({
       id: notificationId,
       userId: payload.userId,
       type: payload.type,
@@ -50,7 +50,7 @@ export async function createNotification(payload: NotificationPayload) {
     })
 
     // Check user preferences
-    const prefs = await db
+    const prefs = await db!
       .select()
       .from(notificationPreferences)
       .where(eq(notificationPreferences.userId, payload.userId))
@@ -58,7 +58,7 @@ export async function createNotification(payload: NotificationPayload) {
 
     // If no preferences exist, create default ones
     if (prefs.length === 0) {
-      await db.insert(notificationPreferences).values({
+      await db!.insert(notificationPreferences).values({
         userId: payload.userId,
         pushEnabled: true,
         emailEnabled: false,
@@ -145,7 +145,7 @@ export async function sendPushNotification(
         )
 
         // Update last used timestamp
-        await db
+        await db!
           .update(pushSubscriptions)
           .set({ lastUsed: new Date() })
           .where(eq(pushSubscriptions.id, sub.id))
@@ -157,7 +157,7 @@ export async function sendPushNotification(
         // Handle expired subscriptions
         if (error.statusCode === 410 || error.statusCode === 404) {
           // Remove invalid subscription
-          await db
+          await db!
             .delete(pushSubscriptions)
             .where(eq(pushSubscriptions.id, sub.id))
           console.log('Removed expired subscription:', sub.id)
