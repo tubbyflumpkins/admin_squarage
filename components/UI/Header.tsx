@@ -53,8 +53,8 @@ export default function Header() {
               Quick Links
             </Link>
             <div className="flex items-center space-x-3 ml-2">
-              <UserAvatar />
               <NotificationBell />
+              <UserAvatar />
             </div>
           </nav>
         </div>
