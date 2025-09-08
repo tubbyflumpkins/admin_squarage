@@ -53,8 +53,9 @@ export async function GET(request: Request) {
   })
 }
 
-// Helper function to send events to specific users
-export function sendEventToUser(userId: string, data: any) {
+// Helper function to send events to specific users (internal use only)
+// This is not exported as it's not a valid Next.js route export
+function sendEventToUser(userId: string, data: any) {
   const controller = clients.get(userId)
   if (controller) {
     try {
