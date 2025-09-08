@@ -21,6 +21,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 })
     }
 
+    // Check if database is configured
+    if (!db) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    }
+
     // Check if subscription already exists
     const existing = await db
       .select()

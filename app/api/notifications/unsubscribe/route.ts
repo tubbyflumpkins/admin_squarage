@@ -20,6 +20,11 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Endpoint required' }, { status: 400 })
     }
 
+    // Check if database is configured
+    if (!db) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    }
+
     // Delete subscription
     const result = await db
       .delete(pushSubscriptions)

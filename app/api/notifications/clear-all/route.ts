@@ -13,6 +13,11 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check if database is configured
+    if (!db) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    }
+
     // Delete all notifications for the user
     await db
       .delete(notifications)

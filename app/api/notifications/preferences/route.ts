@@ -13,6 +13,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check if database is configured
+    if (!db) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    }
+
     // Get user preferences
     const prefs = await db
       .select()
@@ -51,6 +56,11 @@ export async function PUT(request: Request) {
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check if database is configured
+    if (!db) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
     }
 
     const body = await request.json()

@@ -29,6 +29,12 @@ export interface NotificationPayload {
  */
 export async function createNotification(payload: NotificationPayload) {
   try {
+    // Check if database is configured
+    if (!db) {
+      console.error('Database not configured for notifications')
+      return false
+    }
+
     // Create notification record in database
     const notificationId = uuidv4()
     await db.insert(notifications).values({

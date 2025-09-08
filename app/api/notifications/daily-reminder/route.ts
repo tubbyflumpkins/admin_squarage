@@ -15,6 +15,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Check if database is configured
+    if (!db) {
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
+    }
+
     // Get current date (start and end of day)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
