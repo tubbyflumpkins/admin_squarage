@@ -88,6 +88,27 @@ export default function MobileHeader() {
           >
             <div className="bg-squarage-white shadow-xl">
               <div className="py-2">
+                {/* User Info */}
+                {session && (
+                  <>
+                    <div className="px-4 py-3 flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-squarage-green flex items-center justify-center text-white font-semibold">
+                        {session.user?.name?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-squarage-black truncate">
+                          {session.user?.name}
+                        </p>
+                        <p className="text-xs text-gray-600 truncate">
+                          {session.user?.email}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Divider */}
+                    <div className="mx-4 mb-2 border-t border-gray-200" />
+                  </>
+                )}
+                
                 {/* Dashboard Link */}
                 <Link
                   href="/"
