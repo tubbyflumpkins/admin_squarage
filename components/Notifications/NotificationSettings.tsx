@@ -14,7 +14,7 @@ interface NotificationPreferences {
 
 export default function NotificationSettings() {
   const [preferences, setPreferences] = useState<NotificationPreferences>({
-    pushEnabled: true,
+    pushEnabled: false,  // Default to false
     emailEnabled: false,
     taskCreated: true,
     taskAssigned: true,
@@ -51,11 +51,7 @@ export default function NotificationSettings() {
           // Check permission state
           setPermissionState(Notification.permission)
 
-          // Check if subscribed to push
-          if ((window as any).notificationService) {
-            const subscription = await (window as any).notificationService.getSubscription()
-            setPushSubscribed(!!subscription)
-          }
+          // Don't set pushSubscribed here, wait for preferences to load
         }
 
         // Load preferences from API
@@ -64,6 +60,15 @@ export default function NotificationSettings() {
           const data = await response.json()
           if (data.preferences) {
             setPreferences(data.preferences)
+            // Set push subscribed based on saved preference if there's a subscription
+            if (data.preferences.pushEnabled && supported) {
+              if ((window as any).notificationService) {
+                const subscription = await (window as any).notificationService.getSubscription()
+                setPushSubscribed(!!subscription && data.preferences.pushEnabled)
+              } else {
+                setPushSubscribed(data.preferences.pushEnabled)
+              }
+            }
           }
         }
       } catch (error) {

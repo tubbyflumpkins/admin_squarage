@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       // Return default preferences if none exist
       return NextResponse.json({
         preferences: {
-          pushEnabled: true,
+          pushEnabled: false,  // Default to false until user explicitly enables
           emailEnabled: false,
           taskCreated: true,
           taskAssigned: true,
