@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell, Check, CheckCheck, X } from 'lucide-react'
+import { Bell, Check, CheckCheck, X, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import Link from 'next/link'
 
@@ -79,6 +79,24 @@ export default function NotificationBell() {
       }
     } catch (error) {
       console.error('Error marking all as read:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Clear all notifications
+  const clearAll = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/notifications/clear-all', {
+        method: 'DELETE'
+      })
+      if (response.ok) {
+        setNotifications([])
+        setUnreadCount(0)
+      }
+    } catch (error) {
+      console.error('Error clearing all notifications:', error)
     } finally {
       setLoading(false)
     }
@@ -214,11 +232,22 @@ export default function NotificationBell() {
                 <button
                   onClick={markAllAsRead}
                   disabled={loading}
-                  className="text-xs backdrop-blur-sm bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full flex items-center gap-1 transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                  className="text-xs backdrop-blur-sm bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-full flex items-center gap-1 transition-all duration-200 hover:scale-105 hover:shadow-lg"
                   title="Mark all as read"
                 >
                   <CheckCheck className="h-3 w-3" />
-                  Mark all read
+                  <span className="hidden sm:inline">Mark read</span>
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={clearAll}
+                  disabled={loading}
+                  className="text-xs backdrop-blur-sm bg-white/20 hover:bg-red-500/30 px-2.5 py-1.5 rounded-full flex items-center gap-1 transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                  title="Clear all notifications"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  <span className="hidden sm:inline">Clear all</span>
                 </button>
               )}
               <button
@@ -286,18 +315,6 @@ export default function NotificationBell() {
             )}
           </div>
 
-          {/* Footer with Glass Effect */}
-          {notifications.length > 0 && (
-            <div className="backdrop-blur-sm bg-white/30 px-4 py-3 border-t border-white/30">
-              <Link
-                href="/notifications"
-                className="text-sm text-squarage-green hover:text-squarage-green/80 font-semibold transition-colors duration-200"
-                onClick={() => setIsOpen(false)}
-              >
-                View all notifications →
-              </Link>
-            </div>
-          )}
         </div>
       )}
     </div>
