@@ -81,69 +81,50 @@ export default function NotificationSettings() {
     loadPreferences()
   }, [])
 
-  // Handle enabling push notifications
-  const handleEnablePush = async () => {
-    setMessage(null)
-    
-    if (!isSupported) {
-      setMessage({ type: 'error', text: 'Push notifications are not supported in this browser' })
+  // Auto-setup push subscription when preferences change
+  useEffect(() => {
+    if (!loading) {
+      setupPushSubscription()
+    }
+  }, [preferences.taskCreated, preferences.taskAssigned, preferences.taskDue, preferences.statusChanged])
+
+  // Setup push subscription if needed
+  const setupPushSubscription = async () => {
+    if (!isSupported || (isIOS && !isPWA)) {
       return
     }
 
-    if (isIOS && !isPWA) {
-      setMessage({ 
-        type: 'info', 
-        text: 'Please add this app to your Home Screen to enable push notifications on iOS' 
-      })
-      return
-    }
+    // Check if any notification type is enabled
+    const anyEnabled = preferences.taskCreated || preferences.taskAssigned || 
+                      preferences.taskDue || preferences.statusChanged
 
-    try {
-      // Request permission
-      const permission = await Notification.requestPermission()
-      setPermissionState(permission)
+    if (anyEnabled && !pushSubscribed) {
+      // Need to subscribe
+      try {
+        // Check/request permission
+        let permission = Notification.permission
+        if (permission === 'default') {
+          permission = await Notification.requestPermission()
+          setPermissionState(permission)
+        }
 
-      if (permission !== 'granted') {
-        setMessage({ type: 'error', text: 'Permission denied. Please enable notifications in your browser settings.' })
-        return
+        if (permission === 'granted' && (window as any).notificationService) {
+          await (window as any).notificationService.subscribe()
+          setPushSubscribed(true)
+        }
+      } catch (error) {
+        console.error('Error setting up push subscription:', error)
       }
-
-      // Subscribe to push
-      if ((window as any).notificationService) {
-        await (window as any).notificationService.subscribe()
-        setPushSubscribed(true)
-        setPreferences(prev => ({ ...prev, pushEnabled: true }))
-        await savePreferences({ ...preferences, pushEnabled: true })
-        setMessage({ type: 'success', text: 'Push notifications enabled successfully!' })
-
-        // Send test notification
-        setTimeout(() => {
-          (window as any).notificationService.testNotification()
-        }, 1000)
-      } else {
-        setMessage({ type: 'error', text: 'Service worker not ready. Please refresh and try again.' })
+    } else if (!anyEnabled && pushSubscribed) {
+      // Need to unsubscribe
+      try {
+        if ((window as any).notificationService) {
+          await (window as any).notificationService.unsubscribe()
+          setPushSubscribed(false)
+        }
+      } catch (error) {
+        console.error('Error removing push subscription:', error)
       }
-    } catch (error) {
-      console.error('Error enabling push:', error)
-      setMessage({ type: 'error', text: 'Failed to enable push notifications' })
-    }
-  }
-
-  // Handle disabling push notifications
-  const handleDisablePush = async () => {
-    setMessage(null)
-    
-    try {
-      if ((window as any).notificationService) {
-        await (window as any).notificationService.unsubscribe()
-        setPushSubscribed(false)
-        setPreferences(prev => ({ ...prev, pushEnabled: false }))
-        await savePreferences({ ...preferences, pushEnabled: false })
-        setMessage({ type: 'success', text: 'Push notifications disabled' })
-      }
-    } catch (error) {
-      console.error('Error disabling push:', error)
-      setMessage({ type: 'error', text: 'Failed to disable push notifications' })
     }
   }
 
@@ -174,6 +155,8 @@ export default function NotificationSettings() {
     const newPreferences = { ...preferences, [key]: !preferences[key] }
     setPreferences(newPreferences)
     await savePreferences(newPreferences)
+    // Setup/teardown push subscription based on preferences
+    setTimeout(() => setupPushSubscription(), 100)
   }
 
   // Send test notification
@@ -240,38 +223,32 @@ export default function NotificationSettings() {
           </div>
         ) : pushSubscribed ? (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Bell className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium text-green-900">Push Notifications Enabled</p>
-                  <p className="text-sm text-green-700">You will receive notifications for enabled events</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <Bell className="h-5 w-5 text-green-600" />
+              <div>
+                <p className="text-sm font-medium text-green-900">Push Notifications Active</p>
+                <p className="text-sm text-green-700">You'll receive notifications for the types you've selected below</p>
               </div>
-              <button
-                onClick={handleDisablePush}
-                className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Disable
-              </button>
+            </div>
+          </div>
+        ) : permissionState === 'denied' ? (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <BellOff className="h-5 w-5 text-red-600" />
+              <div>
+                <p className="text-sm font-medium text-red-900">Notifications Blocked</p>
+                <p className="text-sm text-red-700">Please enable notifications in your browser settings to receive alerts</p>
+              </div>
             </div>
           </div>
         ) : (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <BellOff className="h-5 w-5 text-gray-600" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Push Notifications Disabled</p>
-                  <p className="text-sm text-gray-700">Enable to receive real-time notifications</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <Bell className="h-5 w-5 text-gray-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-900">Ready to Enable</p>
+                <p className="text-sm text-gray-700">Select notification types below to start receiving alerts</p>
               </div>
-              <button
-                onClick={handleEnablePush}
-                className="px-3 py-1.5 bg-squarage-green text-white text-sm font-medium rounded-lg hover:bg-squarage-green/90 transition-colors"
-              >
-                Enable
-              </button>
             </div>
           </div>
         )}
