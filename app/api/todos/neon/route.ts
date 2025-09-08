@@ -5,6 +5,7 @@ import { db, isDatabaseConfigured } from '@/lib/db'
 import { todos, categories, owners, subtasks, users } from '@/lib/db/schema'
 import { eq, desc, sql as drizzleSql, or } from 'drizzle-orm'
 import type { Todo as StoreTodo, Subtask as StoreSubtask } from '@/lib/types'
+import { createNotification } from '@/lib/notifications'
 
 // Fallback to JSON file if database is not configured
 async function fallbackToJsonFile() {
@@ -301,6 +302,27 @@ export async function POST(request: Request) {
       await Promise.all(ownerPromises)
     }
     
+    // Track changes for notifications
+    const notificationTriggers: Array<{
+      type: 'created' | 'assigned' | 'status_changed'
+      todo: any
+      previousStatus?: string
+      previousOwner?: string
+    }> = []
+
+    // Get existing todos to track changes
+    const existingTodosMap = new Map()
+    if (existingTodoIds.size > 0) {
+      const existingTodosData = await db
+        .select()
+        .from(todos)
+        .where(drizzleSql`${todos.id} IN (${drizzleSql.join(Array.from(existingTodoIds).map(id => drizzleSql`${id}`), drizzleSql`, `)})`)
+      
+      for (const todo of existingTodosData) {
+        existingTodosMap.set(todo.id, todo)
+      }
+    }
+
     // Step 6: UPSERT todos and subtasks - process in batches for better performance
     if (data.todos && data.todos.length > 0) {
       // Process todos in smaller batches to avoid too many concurrent queries
@@ -325,6 +347,35 @@ export async function POST(request: Request) {
             notes: todoData.notes || null,
             createdAt: new Date(todoData.createdAt),
             updatedAt: new Date(todoData.updatedAt)
+          }
+          
+          // Track changes for notifications
+          if (existingTodoIds.has(todo.id)) {
+            const existingTodo = existingTodosMap.get(todo.id)
+            if (existingTodo) {
+              // Check for status change
+              if (existingTodo.status !== todoData.status) {
+                notificationTriggers.push({
+                  type: 'status_changed',
+                  todo: todoData,
+                  previousStatus: existingTodo.status
+                })
+              }
+              // Check for owner change (assignment)
+              if (existingTodo.owner !== todoData.owner) {
+                notificationTriggers.push({
+                  type: 'assigned',
+                  todo: todoData,
+                  previousOwner: existingTodo.owner
+                })
+              }
+            }
+          } else {
+            // New todo created
+            notificationTriggers.push({
+              type: 'created',
+              todo: todoData
+            })
           }
           
           // Create promise for todo upsert
@@ -384,6 +435,84 @@ export async function POST(request: Request) {
         // Execute all operations for this batch in parallel
         await Promise.all(todoPromises)
       }
+    }
+    
+    // Send notifications for tracked changes
+    if (notificationTriggers.length > 0) {
+      // Get all users for owner lookups
+      const allUsers = await db.select().from(users)
+      const userMap = new Map(allUsers.map(u => [u.name, u]))
+      
+      // Process notifications asynchronously (don't wait)
+      Promise.all(notificationTriggers.map(async (trigger) => {
+        try {
+          // Determine who should receive the notification
+          let targetUserId: string | null = null
+          let notificationMessage = ''
+          
+          if (trigger.type === 'created') {
+            // Notify the assigned owner (if not "All")
+            if (trigger.todo.owner && trigger.todo.owner !== 'All') {
+              const targetUser = userMap.get(trigger.todo.owner)
+              if (targetUser) {
+                targetUserId = targetUser.id
+                notificationMessage = `New task created: "${trigger.todo.title}"`
+              }
+            }
+          } else if (trigger.type === 'assigned') {
+            // Notify the new owner (if not "All")
+            if (trigger.todo.owner && trigger.todo.owner !== 'All') {
+              const targetUser = userMap.get(trigger.todo.owner)
+              if (targetUser) {
+                targetUserId = targetUser.id
+                notificationMessage = `Task assigned to you: "${trigger.todo.title}"`
+              }
+            }
+          } else if (trigger.type === 'status_changed') {
+            // Notify the owner about status change
+            if (trigger.todo.owner && trigger.todo.owner !== 'All') {
+              const targetUser = userMap.get(trigger.todo.owner)
+              if (targetUser) {
+                targetUserId = targetUser.id
+                const statusMap: Record<string, string> = {
+                  'not_started': 'Not Started',
+                  'in_progress': 'In Progress',
+                  'completed': 'Completed',
+                  'dead': 'Dead'
+                }
+                const newStatus = statusMap[trigger.todo.status] || trigger.todo.status
+                notificationMessage = `Task status changed to ${newStatus}: "${trigger.todo.title}"`
+              }
+            }
+          }
+          
+          // Send notification if we have a target
+          if (targetUserId && targetUserId !== session.user.id) { // Don't notify self
+            await createNotification({
+              userId: targetUserId,
+              type: trigger.type === 'created' ? 'task_created' : 
+                    trigger.type === 'assigned' ? 'task_assigned' : 'status_changed',
+              title: trigger.type === 'created' ? '➕ New Task' :
+                     trigger.type === 'assigned' ? '👤 Task Assigned' : '✅ Status Changed',
+              message: notificationMessage,
+              relatedId: trigger.todo.id,
+              metadata: {
+                todoTitle: trigger.todo.title,
+                category: trigger.todo.category,
+                priority: trigger.todo.priority,
+                dueDate: trigger.todo.dueDate,
+                previousStatus: trigger.previousStatus,
+                previousOwner: trigger.previousOwner
+              }
+            })
+          }
+        } catch (error) {
+          console.error('Error sending notification:', error)
+          // Don't fail the request if notification fails
+        }
+      })).catch(error => {
+        console.error('Error processing notifications:', error)
+      })
     }
     
     return NextResponse.json({ success: true, method: 'upsert' })

@@ -3,6 +3,7 @@ import localFont from 'next/font/local'
 import './globals.css'
 import PWARegister from '@/components/PWARegister'
 import Providers from '@/components/Providers'
+import NotificationServiceWorker from '@/components/Notifications/NotificationServiceWorker'
 
 const neueHaas = localFont({
   src: [
@@ -55,6 +56,7 @@ export default function RootLayout({
       <body className="font-neue-haas bg-squarage-green min-h-screen">
         <Providers>
           <PWARegister />
+          <NotificationServiceWorker />
           {children}
         </Providers>
       </body>
