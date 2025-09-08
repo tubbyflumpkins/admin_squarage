@@ -203,18 +203,18 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown Panel */}
+      {/* Dropdown Panel with Glassmorphism */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 max-h-[600px] bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden z-50">
-          {/* Header */}
-          <div className="bg-squarage-green text-white px-4 py-3 flex items-center justify-between">
-            <h3 className="font-semibold">Notifications</h3>
+        <div className="absolute right-0 mt-3 w-96 max-h-[600px] backdrop-blur-md bg-white/35 rounded-2xl shadow-2xl border border-white/40 overflow-hidden z-50 transform transition-all duration-200 scale-100 animate-fadeIn">
+          {/* Header with Glass Effect */}
+          <div className="backdrop-blur-md bg-squarage-green/90 text-white px-4 py-3 flex items-center justify-between border-b border-white/20">
+            <h3 className="font-semibold text-lg">Notifications</h3>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
                   disabled={loading}
-                  className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded flex items-center gap-1 transition-colors"
+                  className="text-xs backdrop-blur-sm bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full flex items-center gap-1 transition-all duration-200 hover:scale-105 hover:shadow-lg"
                   title="Mark all as read"
                 >
                   <CheckCheck className="h-3 w-3" />
@@ -223,27 +223,29 @@ export default function NotificationBell() {
               )}
               <button
                 onClick={() => setIsOpen(false)}
-                className="hover:bg-white/20 p-1 rounded transition-colors"
+                className="hover:bg-white/20 p-1.5 rounded-full transition-all duration-200 hover:scale-110"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
           </div>
 
-          {/* Notifications List */}
-          <div className="overflow-y-auto max-h-[500px]">
+          {/* Notifications List with Glass Effect */}
+          <div className="overflow-y-auto max-h-[500px] bg-white/20">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-gray-500">
-                <Bell className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>No notifications yet</p>
+              <div className="px-4 py-12 text-center">
+                <Bell className="h-12 w-12 mx-auto mb-3 text-brown-medium/30" />
+                <p className="text-brown-medium">No notifications yet</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-white/20">
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${
-                      !notification.read ? 'bg-blue-50/50' : ''
+                    className={`px-4 py-3 backdrop-blur-sm transition-all duration-200 cursor-pointer ${
+                      !notification.read 
+                        ? 'bg-squarage-blue/10 hover:bg-squarage-blue/20' 
+                        : 'hover:bg-white/10'
                     }`}
                     onClick={() => {
                       if (!notification.read) {
@@ -263,20 +265,20 @@ export default function NotificationBell() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1">
-                            <p className={`text-sm font-medium text-gray-900 ${
+                            <p className={`text-sm font-medium text-brown-dark ${
                               !notification.read ? 'font-semibold' : ''
                             }`}>
                               {notification.title}
                             </p>
-                            <p className="text-sm text-gray-600 mt-0.5 line-clamp-2">
+                            <p className="text-sm text-brown-medium mt-0.5 line-clamp-2">
                               {notification.message}
                             </p>
                           </div>
                           {!notification.read && (
-                            <div className="w-2 h-2 bg-squarage-blue rounded-full mt-2 flex-shrink-0" />
+                            <div className="w-2 h-2 bg-squarage-green rounded-full mt-2 flex-shrink-0 animate-pulse" />
                           )}
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-brown-light mt-1">
                           {formatTimeAgo(notification.createdAt)}
                         </p>
                       </div>
@@ -287,12 +289,12 @@ export default function NotificationBell() {
             )}
           </div>
 
-          {/* Footer */}
+          {/* Footer with Glass Effect */}
           {notifications.length > 0 && (
-            <div className="bg-gray-50 px-4 py-2 border-t border-gray-200">
+            <div className="backdrop-blur-sm bg-white/30 px-4 py-3 border-t border-white/30">
               <Link
                 href="/notifications"
-                className="text-sm text-squarage-green hover:text-squarage-green/80 font-medium"
+                className="text-sm text-squarage-green hover:text-squarage-green/80 font-semibold transition-colors duration-200"
                 onClick={() => setIsOpen(false)}
               >
                 View all notifications →

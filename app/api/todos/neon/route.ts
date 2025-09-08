@@ -442,69 +442,86 @@ export async function POST(request: Request) {
       // Get all users for owner lookups
       const allUsers = await db.select().from(users)
       const userMap = new Map(allUsers.map(u => [u.name, u]))
+      const userIdMap = new Map(allUsers.map(u => [u.id, u]))
+      
+      // Get the current user's name for attribution
+      const currentUserName = session.user?.name || 'Someone'
       
       // Process notifications asynchronously (don't wait)
       Promise.all(notificationTriggers.map(async (trigger) => {
         try {
-          // Determine who should receive the notification
-          let targetUserId: string | null = null
+          // Determine who should receive notifications
+          const recipientUsers: string[] = []
           let notificationMessage = ''
+          let notificationTitle = ''
           
-          if (trigger.type === 'created') {
-            // Notify the assigned owner (if not "All")
-            if (trigger.todo.owner && trigger.todo.owner !== 'All') {
-              const targetUser = userMap.get(trigger.todo.owner)
-              if (targetUser) {
-                targetUserId = targetUser.id
-                notificationMessage = `New task created: "${trigger.todo.title}"`
-              }
-            }
-          } else if (trigger.type === 'assigned') {
-            // Notify the new owner (if not "All")
-            if (trigger.todo.owner && trigger.todo.owner !== 'All') {
-              const targetUser = userMap.get(trigger.todo.owner)
-              if (targetUser) {
-                targetUserId = targetUser.id
-                notificationMessage = `Task assigned to you: "${trigger.todo.title}"`
-              }
-            }
-          } else if (trigger.type === 'status_changed') {
-            // Notify the owner about status change
-            if (trigger.todo.owner && trigger.todo.owner !== 'All') {
-              const targetUser = userMap.get(trigger.todo.owner)
-              if (targetUser) {
-                targetUserId = targetUser.id
-                const statusMap: Record<string, string> = {
-                  'not_started': 'Not Started',
-                  'in_progress': 'In Progress',
-                  'completed': 'Completed',
-                  'dead': 'Dead'
-                }
-                const newStatus = statusMap[trigger.todo.status] || trigger.todo.status
-                notificationMessage = `Task status changed to ${newStatus}: "${trigger.todo.title}"`
-              }
+          // Determine recipients based on task owner
+          if (trigger.todo.owner === 'All') {
+            // Task assigned to "All" - notify everyone
+            recipientUsers.push(...allUsers.map(u => u.id))
+          } else if (trigger.todo.owner) {
+            // Task assigned to specific person
+            const targetUser = userMap.get(trigger.todo.owner)
+            if (targetUser) {
+              recipientUsers.push(targetUser.id)
             }
           }
           
-          // Send notification if we have a target
-          if (targetUserId && targetUserId !== session.user.id) { // Don't notify self
-            await createNotification({
-              userId: targetUserId,
-              type: trigger.type === 'created' ? 'task_created' : 
-                    trigger.type === 'assigned' ? 'task_assigned' : 'status_changed',
-              title: trigger.type === 'created' ? '➕ New Task' :
-                     trigger.type === 'assigned' ? '👤 Task Assigned' : '✅ Status Changed',
-              message: notificationMessage,
-              relatedId: trigger.todo.id,
-              metadata: {
-                todoTitle: trigger.todo.title,
-                category: trigger.todo.category,
-                priority: trigger.todo.priority,
-                dueDate: trigger.todo.dueDate,
-                previousStatus: trigger.previousStatus,
-                previousOwner: trigger.previousOwner
-              }
-            })
+          // Build notification message with user attribution
+          const statusMap: Record<string, string> = {
+            'not_started': 'Not Started',
+            'in_progress': 'In Progress',
+            'completed': 'Completed',
+            'dead': 'Dead'
+          }
+          
+          if (trigger.type === 'created') {
+            notificationTitle = '➕ New Task'
+            if (trigger.todo.owner === 'All') {
+              notificationMessage = `${currentUserName} created a new task: "${trigger.todo.title}"`
+            } else if (trigger.todo.owner === currentUserName) {
+              notificationMessage = `${currentUserName} created a new task for themselves: "${trigger.todo.title}"`
+            } else {
+              notificationMessage = `${currentUserName} created a new task and assigned it to you: "${trigger.todo.title}"`
+            }
+          } else if (trigger.type === 'assigned') {
+            notificationTitle = '👤 Task Reassigned'
+            if (trigger.todo.owner === 'All') {
+              notificationMessage = `${currentUserName} assigned "${trigger.todo.title}" to everyone`
+            } else if (trigger.todo.owner === currentUserName) {
+              notificationMessage = `${currentUserName} assigned "${trigger.todo.title}" to themselves`
+            } else {
+              notificationMessage = `${currentUserName} assigned "${trigger.todo.title}" to you`
+            }
+          } else if (trigger.type === 'status_changed') {
+            const newStatus = statusMap[trigger.todo.status] || trigger.todo.status
+            notificationTitle = '✅ Status Changed'
+            notificationMessage = `${currentUserName} marked "${trigger.todo.title}" as ${newStatus}`
+          }
+          
+          // Send notification to all recipients (including self for status changes)
+          for (const userId of recipientUsers) {
+            // For status changes, notify everyone including self
+            // For other types, skip self notification
+            if (trigger.type === 'status_changed' || userId !== session.user.id) {
+              await createNotification({
+                userId: userId,
+                type: trigger.type === 'created' ? 'task_created' : 
+                      trigger.type === 'assigned' ? 'task_assigned' : 'status_changed',
+                title: notificationTitle,
+                message: notificationMessage,
+                relatedId: trigger.todo.id,
+                metadata: {
+                  todoTitle: trigger.todo.title,
+                  category: trigger.todo.category,
+                  priority: trigger.todo.priority,
+                  dueDate: trigger.todo.dueDate,
+                  previousStatus: trigger.previousStatus,
+                  previousOwner: trigger.previousOwner,
+                  actionBy: currentUserName
+                }
+              })
+            }
           }
         } catch (error) {
           console.error('Error sending notification:', error)
