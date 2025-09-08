@@ -14,7 +14,7 @@ interface NotificationPreferences {
 
 export default function NotificationSettings() {
   const [preferences, setPreferences] = useState<NotificationPreferences>({
-    pushEnabled: false,  // Default to false
+    pushEnabled: true,  // Default to true
     emailEnabled: false,
     taskCreated: true,
     taskAssigned: true,
