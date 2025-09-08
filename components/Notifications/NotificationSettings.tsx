@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Bell, BellOff, Check, X, Loader2, Smartphone, AlertCircle } from 'lucide-react'
 
 interface NotificationPreferences {
@@ -81,15 +81,8 @@ export default function NotificationSettings() {
     loadPreferences()
   }, [])
 
-  // Auto-setup push subscription when preferences change
-  useEffect(() => {
-    if (!loading) {
-      setupPushSubscription()
-    }
-  }, [preferences.taskCreated, preferences.taskAssigned, preferences.taskDue, preferences.statusChanged])
-
   // Setup push subscription if needed
-  const setupPushSubscription = async () => {
+  const setupPushSubscription = useCallback(async () => {
     if (!isSupported || (isIOS && !isPWA)) {
       return
     }
@@ -126,7 +119,14 @@ export default function NotificationSettings() {
         console.error('Error removing push subscription:', error)
       }
     }
-  }
+  }, [isSupported, isIOS, isPWA, preferences, pushSubscribed])
+
+  // Auto-setup push subscription when preferences change
+  useEffect(() => {
+    if (!loading) {
+      setupPushSubscription()
+    }
+  }, [setupPushSubscription, loading])
 
   // Save preferences to API
   const savePreferences = async (prefs: NotificationPreferences) => {
@@ -155,8 +155,7 @@ export default function NotificationSettings() {
     const newPreferences = { ...preferences, [key]: !preferences[key] }
     setPreferences(newPreferences)
     await savePreferences(newPreferences)
-    // Setup/teardown push subscription based on preferences
-    setTimeout(() => setupPushSubscription(), 100)
+    // setupPushSubscription will be called automatically via useEffect
   }
 
   // Send test notification
