@@ -149,13 +149,12 @@ export default function NotificationBell() {
     fetchUnreadCount()
     
     // Set up SSE
-    const cleanup = setupSSE()
+    setupSSE()
     
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close()
       }
-      if (cleanup) cleanup()
     }
   }, [fetchNotifications, fetchUnreadCount])
 
