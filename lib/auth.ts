@@ -14,7 +14,10 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
+        console.log('Auth attempt for:', credentials?.email)
+        
         if (!credentials?.email || !credentials?.password) {
+          console.error('Missing credentials')
           return null
         }
 
@@ -25,6 +28,8 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
+          console.log('Database connected, searching for user...')
+          
           // Find user by email
           const user = await db
             .select()
@@ -34,8 +39,11 @@ export const authOptions: NextAuthOptions = {
             .then(rows => rows[0])
 
           if (!user) {
+            console.error('User not found in database for email:', credentials.email)
             return null
           }
+
+          console.log('User found:', user.email, 'ID:', user.id)
 
           // Check password
           const isPasswordValid = await bcrypt.compare(
@@ -44,8 +52,11 @@ export const authOptions: NextAuthOptions = {
           )
 
           if (!isPasswordValid) {
+            console.error('Invalid password for user:', credentials.email)
             return null
           }
+          
+          console.log('Password valid, returning user session')
 
           // Return user object for session
           return {
@@ -56,6 +67,10 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (error) {
           console.error('Auth error:', error)
+          console.error('Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          })
           return null
         }
       }
