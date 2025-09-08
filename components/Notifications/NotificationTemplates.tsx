@@ -238,9 +238,9 @@ export default function NotificationTemplates() {
       <div className="border-t border-brown-light/20 pt-4">
         <h4 className="font-medium text-brown-dark mb-3">Preview Examples</h4>
         <div className="bg-white/70 rounded-lg p-4 space-y-2 text-sm text-brown-medium">
-          <p>• Dylan created a new task: "Review Q4 reports"</p>
-          <p>• Thomas assigned "Fix login bug" to you</p>
-          <p>• Dylan marked "Deploy v2.0" as Completed</p>
+          <p>• Dylan created a new task: &quot;Review Q4 reports&quot;</p>
+          <p>• Thomas assigned &quot;Fix login bug&quot; to you</p>
+          <p>• Dylan marked &quot;Deploy v2.0&quot; as Completed</p>
           <p>• You have 3 tasks due today</p>
         </div>
       </div>

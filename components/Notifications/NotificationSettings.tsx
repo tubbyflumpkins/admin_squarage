@@ -198,7 +198,7 @@ export default function NotificationSettings() {
               </p>
               <ol className="text-sm text-blue-700 mt-2 ml-4 list-decimal">
                 <li>Tap the Share button in Safari</li>
-                <li>Select "Add to Home Screen"</li>
+                <li>Select &quot;Add to Home Screen&quot;</li>
                 <li>Open the app from your Home Screen</li>
                 <li>Return here to enable notifications</li>
               </ol>
