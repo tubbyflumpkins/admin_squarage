@@ -14,7 +14,7 @@ export async function PUT(request: Request) {
     // Mark all notifications as read
     const result = await markAllAsRead(session.user.id)
 
-    if (!result.success) {
+    if (!result || (typeof result === 'object' && !result.success)) {
       return NextResponse.json({ 
         error: 'Failed to mark all notifications as read' 
       }, { status: 500 })

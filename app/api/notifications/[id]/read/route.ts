@@ -23,7 +23,7 @@ export async function PUT(
     // Mark notification as read
     const result = await markAsRead(id, session.user.id)
 
-    if (!result.success) {
+    if (!result || (typeof result === 'object' && !result.success)) {
       return NextResponse.json({ 
         error: 'Failed to mark notification as read' 
       }, { status: 500 })
