@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import NotificationBell from '@/components/Notifications/NotificationBell'
 
 export default function Header() {
 
@@ -56,6 +57,7 @@ export default function Header() {
             >
               Settings
             </Link>
+            <NotificationBell />
           </nav>
         </div>
       </div>
