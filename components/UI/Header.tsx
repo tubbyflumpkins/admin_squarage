@@ -2,6 +2,8 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import NotificationBell from '@/components/Notifications/NotificationBell'
+import UserAvatar from '@/components/UI/UserAvatar'
 
 export default function Header() {
 
@@ -19,7 +21,7 @@ export default function Header() {
               priority
             />
           </Link>
-          <nav className="flex items-center space-x-8">
+          <nav className="flex items-center space-x-6">
             <Link 
               href="/" 
               className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
@@ -50,12 +52,10 @@ export default function Header() {
             >
               Quick Links
             </Link>
-            <Link 
-              href="/settings" 
-              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
-            >
-              Settings
-            </Link>
+            <div className="flex items-center space-x-3 ml-2">
+              <NotificationBell />
+              <UserAvatar />
+            </div>
           </nav>
         </div>
       </div>

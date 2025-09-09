@@ -52,25 +52,6 @@ export const subtasks = pgTable('subtasks', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-// Define relations
-export const usersRelations = relations(users, ({ many }) => ({
-  todos: many(todos),
-}))
-
-export const todosRelations = relations(todos, ({ many, one }) => ({
-  subtasks: many(subtasks),
-  user: one(users, {
-    fields: [todos.userId],
-    references: [users.id],
-  }),
-}))
-
-export const subtasksRelations = relations(subtasks, ({ one }) => ({
-  todo: one(todos, {
-    fields: [subtasks.todoId],
-    references: [todos.id],
-  }),
-}))
 
 // Collections table
 export const collections = pgTable('collections', {
@@ -114,35 +95,6 @@ export const saleSubtasks = pgTable('sale_subtasks', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-// Define collections relations
-export const collectionsRelations = relations(collections, ({ many }) => ({
-  products: many(products),
-}))
-
-// Define products relations
-export const productsRelations = relations(products, ({ one, many }) => ({
-  collection: one(collections, {
-    fields: [products.collectionId],
-    references: [collections.id],
-  }),
-  sales: many(sales),
-}))
-
-// Define sales relations
-export const salesRelations = relations(sales, ({ one, many }) => ({
-  product: one(products, {
-    fields: [sales.productId],
-    references: [products.id],
-  }),
-  subtasks: many(saleSubtasks),
-}))
-
-export const saleSubtasksRelations = relations(saleSubtasks, ({ one }) => ({
-  sale: one(sales, {
-    fields: [saleSubtasks.saleId],
-    references: [sales.id],
-  }),
-}))
 
 // Calendar Types table
 export const calendarTypes = pgTable('calendar_types', {
@@ -176,7 +128,112 @@ export const eventReminders = pgTable('event_reminders', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
-// Define calendar relations
+
+// Quick Links table
+export const quickLinks = pgTable('quick_links', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  url: text('url').notNull(),
+  faviconUrl: text('favicon_url'),
+  orderIndex: integer('order_index').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Notifications table
+export const notifications = pgTable('notifications', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  userId: varchar('user_id', { length: 255 }).notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: varchar('type', { length: 50 }).notNull(), // 'task_created', 'task_assigned', 'task_due', 'status_changed'
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  relatedId: varchar('related_id', { length: 255 }), // todoId for task notifications
+  metadata: jsonb('metadata').$type<Record<string, any>>(), // additional data
+  read: boolean('read').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Push Subscriptions table
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  userId: varchar('user_id', { length: 255 }).notNull().references(() => users.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').notNull().unique(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastUsed: timestamp('last_used').defaultNow().notNull(),
+})
+
+// Notification Preferences table
+export const notificationPreferences = pgTable('notification_preferences', {
+  userId: varchar('user_id', { length: 255 }).primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  pushEnabled: boolean('push_enabled').default(true).notNull(),
+  emailEnabled: boolean('email_enabled').default(false).notNull(),
+  taskCreated: boolean('task_created').default(true).notNull(),
+  taskAssigned: boolean('task_assigned').default(true).notNull(),
+  taskDue: boolean('task_due').default(true).notNull(),
+  statusChanged: boolean('status_changed').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// ============= RELATIONS DEFINITIONS (must come after all table definitions) =============
+
+// User relations
+export const usersRelations = relations(users, ({ many, one }) => ({
+  todos: many(todos),
+  notifications: many(notifications),
+  pushSubscriptions: many(pushSubscriptions),
+  notificationPreferences: one(notificationPreferences),
+}))
+
+// Todo relations
+export const todosRelations = relations(todos, ({ many, one }) => ({
+  subtasks: many(subtasks),
+  user: one(users, {
+    fields: [todos.userId],
+    references: [users.id],
+  }),
+}))
+
+export const subtasksRelations = relations(subtasks, ({ one }) => ({
+  todo: one(todos, {
+    fields: [subtasks.todoId],
+    references: [todos.id],
+  }),
+}))
+
+// Collection relations
+export const collectionsRelations = relations(collections, ({ many }) => ({
+  products: many(products),
+}))
+
+export const productsRelations = relations(products, ({ one, many }) => ({
+  collection: one(collections, {
+    fields: [products.collectionId],
+    references: [collections.id],
+  }),
+  sales: many(sales),
+}))
+
+// Sales relations
+export const salesRelations = relations(sales, ({ one, many }) => ({
+  product: one(products, {
+    fields: [sales.productId],
+    references: [products.id],
+  }),
+  subtasks: many(saleSubtasks),
+}))
+
+export const saleSubtasksRelations = relations(saleSubtasks, ({ one }) => ({
+  sale: one(sales, {
+    fields: [saleSubtasks.saleId],
+    references: [sales.id],
+  }),
+}))
+
+// Calendar relations
 export const calendarTypesRelations = relations(calendarTypes, ({ many }) => ({
   events: many(calendarEvents),
 }))
@@ -196,16 +253,27 @@ export const eventRemindersRelations = relations(eventReminders, ({ one }) => ({
   }),
 }))
 
-// Quick Links table
-export const quickLinks = pgTable('quick_links', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  url: text('url').notNull(),
-  faviconUrl: text('favicon_url'),
-  orderIndex: integer('order_index').notNull().default(0),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+// Notification relations
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}))
+
+export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one }) => ({
+  user: one(users, {
+    fields: [pushSubscriptions.userId],
+    references: [users.id],
+  }),
+}))
+
+export const notificationPreferencesRelations = relations(notificationPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationPreferences.userId],
+    references: [users.id],
+  }),
+}))
 
 // Type exports for TypeScript
 export type User = typeof users.$inferSelect
@@ -234,3 +302,9 @@ export type EventReminder = typeof eventReminders.$inferSelect
 export type NewEventReminder = typeof eventReminders.$inferInsert
 export type QuickLink = typeof quickLinks.$inferSelect
 export type NewQuickLink = typeof quickLinks.$inferInsert
+export type Notification = typeof notifications.$inferSelect
+export type NewNotification = typeof notifications.$inferInsert
+export type PushSubscription = typeof pushSubscriptions.$inferSelect
+export type NewPushSubscription = typeof pushSubscriptions.$inferInsert
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect
+export type NewNotificationPreferences = typeof notificationPreferences.$inferInsert

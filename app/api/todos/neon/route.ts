@@ -5,6 +5,7 @@ import { db, isDatabaseConfigured } from '@/lib/db'
 import { todos, categories, owners, subtasks, users } from '@/lib/db/schema'
 import { eq, desc, sql as drizzleSql, or } from 'drizzle-orm'
 import type { Todo as StoreTodo, Subtask as StoreSubtask } from '@/lib/types'
+import { createNotification } from '@/lib/notifications'
 
 // Fallback to JSON file if database is not configured
 async function fallbackToJsonFile() {
@@ -301,6 +302,27 @@ export async function POST(request: Request) {
       await Promise.all(ownerPromises)
     }
     
+    // Track changes for notifications
+    const notificationTriggers: Array<{
+      type: 'created' | 'assigned' | 'status_changed'
+      todo: any
+      previousStatus?: string
+      previousOwner?: string
+    }> = []
+
+    // Get existing todos to track changes
+    const existingTodosMap = new Map()
+    if (existingTodoIds.size > 0) {
+      const existingTodosData = await db
+        .select()
+        .from(todos)
+        .where(drizzleSql`${todos.id} IN (${drizzleSql.join(Array.from(existingTodoIds).map(id => drizzleSql`${id}`), drizzleSql`, `)})`)
+      
+      for (const todo of existingTodosData) {
+        existingTodosMap.set(todo.id, todo)
+      }
+    }
+
     // Step 6: UPSERT todos and subtasks - process in batches for better performance
     if (data.todos && data.todos.length > 0) {
       // Process todos in smaller batches to avoid too many concurrent queries
@@ -325,6 +347,35 @@ export async function POST(request: Request) {
             notes: todoData.notes || null,
             createdAt: new Date(todoData.createdAt),
             updatedAt: new Date(todoData.updatedAt)
+          }
+          
+          // Track changes for notifications
+          if (existingTodoIds.has(todo.id)) {
+            const existingTodo = existingTodosMap.get(todo.id)
+            if (existingTodo) {
+              // Check for status change
+              if (existingTodo.status !== todoData.status) {
+                notificationTriggers.push({
+                  type: 'status_changed',
+                  todo: todoData,
+                  previousStatus: existingTodo.status
+                })
+              }
+              // Check for owner change (assignment)
+              if (existingTodo.owner !== todoData.owner) {
+                notificationTriggers.push({
+                  type: 'assigned',
+                  todo: todoData,
+                  previousOwner: existingTodo.owner
+                })
+              }
+            }
+          } else {
+            // New todo created
+            notificationTriggers.push({
+              type: 'created',
+              todo: todoData
+            })
           }
           
           // Create promise for todo upsert
@@ -384,6 +435,112 @@ export async function POST(request: Request) {
         // Execute all operations for this batch in parallel
         await Promise.all(todoPromises)
       }
+    }
+    
+    // Send notifications for tracked changes
+    if (notificationTriggers.length > 0) {
+      // Get all users for owner lookups
+      const allUsers = await db.select().from(users)
+      const userMap = new Map(allUsers.map(u => [u.name, u]))
+      const userIdMap = new Map(allUsers.map(u => [u.id, u]))
+      
+      // Get the current user's name for attribution
+      const currentUserName = session.user?.name || 'Someone'
+      
+      // Process notifications asynchronously (don't wait)
+      Promise.all(notificationTriggers.map(async (trigger) => {
+        try {
+          // Determine who should receive notifications
+          const recipientUsers: string[] = []
+          let notificationMessage = ''
+          let notificationTitle = ''
+          
+          // Determine recipients based on task owner
+          if (trigger.todo.owner === 'All') {
+            // Task assigned to "All" - notify everyone
+            recipientUsers.push(...allUsers.map(u => u.id))
+          } else if (trigger.todo.owner) {
+            // Task assigned to specific person
+            const targetUser = userMap.get(trigger.todo.owner)
+            if (targetUser) {
+              recipientUsers.push(targetUser.id)
+            }
+          }
+          
+          // Build notification message with user attribution
+          const statusMap: Record<string, string> = {
+            'not_started': 'Not Started',
+            'in_progress': 'In Progress',
+            'completed': 'Completed',
+            'dead': 'Dead'
+          }
+          
+          if (trigger.type === 'created') {
+            notificationTitle = '➕ New Task'
+            if (trigger.todo.owner === 'All') {
+              notificationMessage = `${currentUserName} created a new task: "${trigger.todo.title}"`
+            } else if (trigger.todo.owner === currentUserName) {
+              notificationMessage = `${currentUserName} created a new task for themselves: "${trigger.todo.title}"`
+            } else {
+              notificationMessage = `${currentUserName} created a new task and assigned it to you: "${trigger.todo.title}"`
+            }
+          } else if (trigger.type === 'assigned') {
+            notificationTitle = '👤 Task Reassigned'
+            if (trigger.todo.owner === 'All') {
+              notificationMessage = `${currentUserName} assigned "${trigger.todo.title}" to everyone`
+            } else if (trigger.todo.owner === currentUserName) {
+              notificationMessage = `${currentUserName} assigned "${trigger.todo.title}" to themselves`
+            } else {
+              notificationMessage = `${currentUserName} assigned "${trigger.todo.title}" to you`
+            }
+          } else if (trigger.type === 'status_changed') {
+            const newStatus = statusMap[trigger.todo.status] || trigger.todo.status
+            notificationTitle = '✅ Status Changed'
+            notificationMessage = `${currentUserName} marked "${trigger.todo.title}" as ${newStatus}`
+            
+            // If task is marked as completed or dead, notify EVERYONE
+            if (trigger.todo.status === 'completed' || trigger.todo.status === 'dead') {
+              // Clear existing recipients and add all users
+              recipientUsers.length = 0
+              recipientUsers.push(...allUsers.map(u => u.id))
+            }
+          }
+          
+          // Send notification to all recipients
+          for (const userId of recipientUsers) {
+            // For completed/dead status changes, notify everyone including self
+            // For other status changes, notify everyone associated with the task
+            // For other types, skip self notification
+            const isCompletedOrDead = trigger.type === 'status_changed' && 
+                                     (trigger.todo.status === 'completed' || trigger.todo.status === 'dead')
+            
+            if (isCompletedOrDead || trigger.type === 'status_changed' || userId !== session.user.id) {
+              await createNotification({
+                userId: userId,
+                type: trigger.type === 'created' ? 'task_created' : 
+                      trigger.type === 'assigned' ? 'task_assigned' : 'status_changed',
+                title: notificationTitle,
+                message: notificationMessage,
+                relatedId: trigger.todo.id,
+                metadata: {
+                  todoTitle: trigger.todo.title,
+                  category: trigger.todo.category,
+                  priority: trigger.todo.priority,
+                  dueDate: trigger.todo.dueDate,
+                  previousStatus: trigger.previousStatus,
+                  previousOwner: trigger.previousOwner,
+                  actionBy: currentUserName
+                }
+              })
+            }
+          }
+        } catch (error) {
+          console.error('Error sending notification:', error)
+          // Don't fail the request if notification fails
+        }
+      })).catch(error => {
+        console.error('Error processing notifications:', error)
+      })
     }
     
     return NextResponse.json({ success: true, method: 'upsert' })

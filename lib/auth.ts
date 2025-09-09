@@ -21,7 +21,6 @@ export const authOptions: NextAuthOptions = {
         try {
           // Check database connection
           if (!db) {
-            console.error('Database connection unavailable')
             return null
           }
 
@@ -55,7 +54,6 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
           }
         } catch (error) {
-          console.error('Auth error:', error)
           return null
         }
       }
