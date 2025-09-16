@@ -59,7 +59,7 @@ interface CalendarStore {
 
 // Debounce timer for saves
 let saveDebounceTimer: NodeJS.Timeout | null = null
-const SAVE_DEBOUNCE_MS = 1000
+const SAVE_DEBOUNCE_MS = 5000 // Increased from 1s to 5s to reduce database calls
 
 // Default calendar types
 const defaultCalendarTypes: Omit<CalendarType, 'id' | 'createdAt'>[] = [
@@ -197,7 +197,7 @@ const useCalendarStore = create<CalendarStore>((set, get) => ({
       clearTimeout(saveDebounceTimer)
     }
     
-    // Set new timer
+    // Set new timer (5 second delay to batch multiple changes)
     saveDebounceTimer = setTimeout(async () => {
       try {
         console.log('Saving calendar data to server...')

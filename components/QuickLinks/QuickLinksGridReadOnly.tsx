@@ -21,7 +21,7 @@ export default function QuickLinksGridReadOnly({
     loadFromServer().then(() => {
       setIsHydrated(true)
     })
-  }, [loadFromServer])
+  }, []) // Empty dependency array - only run once on mount
 
   if (!isHydrated) {
     return (

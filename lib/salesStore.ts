@@ -49,7 +49,7 @@ interface SalesStore {
 
 // Debounce timer for saves
 let saveDebounceTimer: NodeJS.Timeout | null = null
-const SAVE_DEBOUNCE_MS = 1000
+const SAVE_DEBOUNCE_MS = 5000 // Increased from 1s to 5s to reduce database calls
 
 const useSalesStore = create<SalesStore>((set, get) => ({
   // Initial state
@@ -162,10 +162,15 @@ const useSalesStore = create<SalesStore>((set, get) => ({
       clearTimeout(saveDebounceTimer)
     }
     
-    // Debounce the save
+    // Debounce the save (5 second delay to batch multiple changes)
     saveDebounceTimer = setTimeout(async () => {
       try {
-        console.log('Saving sales data to server...')
+        console.log('[SalesStore] Saving data to server after user action...', {
+          sales: state.sales.length,
+          collections: state.collections.length,
+          products: state.products.length,
+          timestamp: new Date().toISOString()
+        })
         const response = await fetch('/api/sales/neon', {
           method: 'POST',
           headers: {

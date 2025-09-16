@@ -87,7 +87,7 @@ export default function QuickLinksGrid() {
     loadFromServer().then(() => {
       setIsHydrated(true)
     })
-  }, [loadFromServer])
+  }, []) // Empty dependency array - only run once on mount
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event

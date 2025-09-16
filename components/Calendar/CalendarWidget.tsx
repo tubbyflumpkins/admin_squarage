@@ -20,7 +20,7 @@ export default function CalendarWidget() {
     loadFromServer().then(() => {
       setIsHydrated(true)
     })
-  }, [loadFromServer])
+  }, []) // Empty dependency array - only run once on mount
   
   // Get all upcoming events (from start of today onwards)
   const today = new Date()
