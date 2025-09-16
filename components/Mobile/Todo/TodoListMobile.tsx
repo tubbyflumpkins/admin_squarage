@@ -39,7 +39,7 @@ export default function TodoListMobile() {
     loadFromServer().then(() => {
       setIsHydrated(true)
     })
-  }, [loadFromServer])
+  }, []) // Empty dependency array - only run once on mount
 
   // Handle click outside to save/close editable cards
   useEffect(() => {

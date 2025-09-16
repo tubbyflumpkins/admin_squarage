@@ -24,7 +24,7 @@ interface QuickLinksStore {
 
 // Debounce timer for saves
 let saveDebounceTimer: NodeJS.Timeout | null = null
-const SAVE_DEBOUNCE_MS = 1000
+const SAVE_DEBOUNCE_MS = 5000 // Increased from 1s to 5s to reduce database calls
 
 const useQuickLinksStore = create<QuickLinksStore>((set, get) => ({
   // Initial state
@@ -101,6 +101,7 @@ const useQuickLinksStore = create<QuickLinksStore>((set, get) => ({
       clearTimeout(saveDebounceTimer)
     }
     
+    // Debounce the save (5 second delay to batch multiple changes)
     saveDebounceTimer = setTimeout(async () => {
       try {
         console.log('Saving quick links to server...')

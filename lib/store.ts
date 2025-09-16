@@ -46,7 +46,7 @@ interface TodoStore {
 
 // Debounce timer for saves
 let saveDebounceTimer: NodeJS.Timeout | null = null
-const SAVE_DEBOUNCE_MS = 1000
+const SAVE_DEBOUNCE_MS = 5000 // Increased from 1s to 5s to reduce database calls
 
 // Default colors for categories/owners
 const colors = [
@@ -174,10 +174,15 @@ const useTodoStore = create<TodoStore>((set, get) => ({
       clearTimeout(saveDebounceTimer)
     }
     
-    // Debounce the save
+    // Debounce the save (5 second delay to batch multiple changes)
     saveDebounceTimer = setTimeout(async () => {
       try {
-        console.log('Saving data to server...')
+        console.log('[TodoStore] Saving data to server after user action...', {
+          todos: state.todos.length,
+          categories: state.categories.length,
+          owners: state.owners.length,
+          timestamp: new Date().toISOString()
+        })
         
         const dataToSave = {
           todos: state.todos,
