@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import useQuickLinksStore from '@/lib/quickLinksStore'
+import { useDashboardData } from '@/hooks/useDashboardData'
 import QuickLinkItem from './QuickLinkItem'
 import { ExternalLink } from 'lucide-react'
 
@@ -15,13 +16,16 @@ export default function QuickLinksGridReadOnly({
   maxItems = 8,
 }: QuickLinksGridReadOnlyProps) {
   const [isHydrated, setIsHydrated] = useState(false)
-  const { quickLinks, loadFromServer, getFilteredQuickLinks } = useQuickLinksStore()
+  const { quickLinks, getFilteredQuickLinks } = useQuickLinksStore()
+  
+  // Use the dashboard data loader to prevent multiple simultaneous loads
+  const { hasLoaded } = useDashboardData()
 
   useEffect(() => {
-    loadFromServer().then(() => {
+    if (hasLoaded) {
       setIsHydrated(true)
-    })
-  }, []) // Empty dependency array - only run once on mount
+    }
+  }, [hasLoaded])
 
   if (!isHydrated) {
     return (

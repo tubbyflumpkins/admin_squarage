@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/sortable'
 import { Plus, Settings2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import useTodoStore from '@/lib/store'
+import { useDashboardData } from '@/hooks/useDashboardData'
 import TodoItem from './TodoItem'
 import TodoItemEditable from './TodoItemEditable'
 import CategoryOwnerEditModal from './CategoryOwnerEditModal'
@@ -65,15 +66,14 @@ export default function TodoListGrid({ isFullPage = false, containerHeight = '40
     deleteOwner,
   } = useTodoStore()
 
+  // Use the dashboard data loader to prevent multiple simultaneous loads
+  const { hasLoaded } = useDashboardData()
+  
   useEffect(() => {
-    const loadData = async () => {
-      // Load data from server on mount
-      await loadFromServer()
+    if (hasLoaded) {
       setIsHydrated(true)
     }
-    loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only run once on mount
+  }, [hasLoaded])
 
   useEffect(() => {
     if (sortColumn && sortDirection) {

@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/sortable'
 import { cn } from '@/lib/utils'
 import useSalesStore from '@/lib/salesStore'
+import { useDashboardData } from '@/hooks/useDashboardData'
 import SalesItem from './SalesItem'
 import SalesItemEditable from './SalesItemEditable'
 import CollectionProductEditModal from './CollectionProductEditModal'
@@ -57,16 +58,14 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
     })
   )
 
-  // Load data from server on mount
+  // Use the dashboard data loader to prevent multiple simultaneous loads
+  const { hasLoaded } = useDashboardData()
+  
   useEffect(() => {
-    const loadData = async () => {
-      // Load data from server on mount
-      await loadFromServer()
+    if (hasLoaded) {
       setIsHydrated(true)
     }
-    loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Only run once on mount
+  }, [hasLoaded])
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event

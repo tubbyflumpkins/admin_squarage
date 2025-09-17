@@ -7,6 +7,7 @@ import {
   CalendarSortBy,
   EventReminder 
 } from './calendarTypes'
+import { loadingCoordinator } from './loadingCoordinator'
 
 interface CalendarStore {
   // State
@@ -108,24 +109,24 @@ const useCalendarStore = create<CalendarStore>((set, get) => ({
   isLoading: false,
   hasLoadedFromServer: false,
   
-  // Load data from server
+  // Load data from server with coordination to prevent multiple simultaneous loads
   loadFromServer: async () => {
     const state = get()
-    if (state.isLoading) {
-      console.log('Already loading calendar data, skipping concurrent request...')
-      return
-    }
     
-    set({ isLoading: true })
-    
-    try {
-      console.log('Loading calendar data from server...')
-      const response = await fetch('/api/calendar/neon')
-      
-      if (!response.ok) {
-        console.error(`Calendar API returned ${response.status}: ${response.statusText}`)
-        throw new Error(`Failed to load calendar data: ${response.status}`)
-      }
+    // Use the loading coordinator to prevent multiple simultaneous requests
+    return loadingCoordinator.coordinatedLoad(
+      'calendar-data',
+      async () => {
+        set({ isLoading: true })
+        
+        try {
+          console.log('Loading calendar data from server...')
+          const response = await fetch('/api/calendar/neon')
+          
+          if (!response.ok) {
+            console.error(`Calendar API returned ${response.status}: ${response.statusText}`)
+            throw new Error(`Failed to load calendar data: ${response.status}`)
+          }
       
       const data = await response.json()
       console.log('Calendar data loaded from server:', {
@@ -162,20 +163,26 @@ const useCalendarStore = create<CalendarStore>((set, get) => ({
         hasLoadedFromServer: true
       })
       
-      // Create default calendar types if none exist
-      if (calendarTypes.length === 0) {
-        console.log('Creating default calendar types...')
-        defaultCalendarTypes.forEach(type => {
-          get().addCalendarType(type.name, type.color)
-        })
-      }
-    } catch (error) {
-      console.error('Error loading calendar data from server:', error)
-      set({ 
-        isLoading: false,
-        hasLoadedFromServer: true
-      })
-    }
+          // Create default calendar types if none exist
+          if (calendarTypes.length === 0) {
+            console.log('Creating default calendar types...')
+            defaultCalendarTypes.forEach(type => {
+              get().addCalendarType(type.name, type.color)
+            })
+          }
+          
+          return data
+        } catch (error) {
+          console.error('Error loading calendar data from server:', error)
+          set({ 
+            isLoading: false,
+            hasLoadedFromServer: true
+          })
+          throw error
+        }
+      },
+      { bypassCache: state.isLoading }
+    )
   },
   
   // Save data to server (debounced)

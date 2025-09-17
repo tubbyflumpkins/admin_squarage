@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import useCalendarStore from '@/lib/calendarStore'
+import { useDashboardData } from '@/hooks/useDashboardData'
 import { format, isToday, isTomorrow, startOfDay, endOfDay, addDays, isSameDay } from 'date-fns'
 
 export default function CalendarWidget() {
@@ -12,15 +13,17 @@ export default function CalendarWidget() {
   const { 
     events, 
     calendarTypes,
-    loadFromServer,
     getEventsForDateRange 
   } = useCalendarStore()
   
+  // Use the dashboard data loader to prevent multiple simultaneous loads
+  const { hasLoaded } = useDashboardData()
+  
   useEffect(() => {
-    loadFromServer().then(() => {
+    if (hasLoaded) {
       setIsHydrated(true)
-    })
-  }, []) // Empty dependency array - only run once on mount
+    }
+  }, [hasLoaded])
   
   // Get all upcoming events (from start of today onwards)
   const today = new Date()

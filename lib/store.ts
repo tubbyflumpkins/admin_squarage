@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Todo, TodoFilters, CategoryOption, OwnerOption, SortBy, TodoStatus, FilterBy, Subtask } from './types'
+import { loadingCoordinator } from './loadingCoordinator'
 
 interface TodoStore {
   // State
@@ -73,75 +74,80 @@ const useTodoStore = create<TodoStore>((set, get) => ({
   isLoading: false,
   hasLoadedFromServer: false,
   
-  // Load data from server
+  // Load data from server with coordination to prevent multiple simultaneous loads
   loadFromServer: async () => {
     const state = get()
-    // Prevent concurrent loads but always allow fresh data fetch
-    if (state.isLoading) {
-      console.log('Already loading, skipping concurrent request...')
-      return
-    }
     
-    set({ isLoading: true })
-    
-    try {
-      console.log('Loading data from server...')
-      const response = await fetch('/api/todos/neon', {
-        credentials: 'include' // Ensure cookies are sent with request
-      })
-      
-      if (!response.ok) {
-        console.error(`API returned ${response.status}: ${response.statusText}`)
+    // Use the loading coordinator to prevent multiple simultaneous requests
+    return loadingCoordinator.coordinatedLoad(
+      'todos-data',
+      async () => {
+        set({ isLoading: true })
         
-        // Handle authentication errors specifically
-        if (response.status === 401) {
-          console.error('Authentication error - redirecting to login')
-          // In a browser environment, redirect to login
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login'
+        try {
+          console.log('Loading todos data from server...')
+          const response = await fetch('/api/todos/neon', {
+            credentials: 'include' // Ensure cookies are sent with request
+          })
+          
+          if (!response.ok) {
+            console.error(`API returned ${response.status}: ${response.statusText}`)
+            
+            // Handle authentication errors specifically
+            if (response.status === 401) {
+              console.error('Authentication error - redirecting to login')
+              // In a browser environment, redirect to login
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login'
+              }
+              throw new Error('Authentication required')
+            }
+            
+            const errorText = await response.text()
+            console.error('Error response:', errorText)
+            throw new Error(`Failed to load data: ${response.status}`)
           }
-          throw new Error('Authentication required')
+          
+          const data = await response.json()
+          console.log('Todos data loaded from server:', {
+            todosCount: data.todos?.length || 0,
+            categoriesCount: data.categories?.length || 0,
+            ownersCount: data.owners?.length || 0
+          })
+          
+          // Only update state if we actually got data
+          if (data.todos || data.categories || data.owners) {
+            set({
+              todos: data.todos || [],
+              categories: data.categories || [],
+              owners: data.owners || [],
+              isLoading: false,
+              hasLoadedFromServer: true
+            })
+          } else {
+            console.warn('API returned empty data')
+            set({ 
+              isLoading: false,
+              hasLoadedFromServer: true
+            })
+          }
+          
+          return data
+        } catch (error) {
+          console.error('Error loading todos data from server:', error)
+          // Try to provide helpful error messages
+          if (error instanceof TypeError && error.message.includes('fetch')) {
+            console.error('Network error - could not connect to API')
+          }
+          set({ 
+            isLoading: false,
+            hasLoadedFromServer: true // Mark as loaded even on error to prevent infinite retries
+          })
+          throw error
         }
-        
-        const errorText = await response.text()
-        console.error('Error response:', errorText)
-        throw new Error(`Failed to load data: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      console.log('Data loaded from server:', {
-        todosCount: data.todos?.length || 0,
-        categoriesCount: data.categories?.length || 0,
-        ownersCount: data.owners?.length || 0
-      })
-      
-      // Only update state if we actually got data
-      if (data.todos || data.categories || data.owners) {
-        set({
-          todos: data.todos || [],
-          categories: data.categories || [],
-          owners: data.owners || [],
-          isLoading: false,
-          hasLoadedFromServer: true
-        })
-      } else {
-        console.warn('API returned empty data')
-        set({ 
-          isLoading: false,
-          hasLoadedFromServer: true
-        })
-      }
-    } catch (error) {
-      console.error('Error loading data from server:', error)
-      // Try to provide helpful error messages
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error('Network error - could not connect to API')
-      }
-      set({ 
-        isLoading: false,
-        hasLoadedFromServer: true // Mark as loaded even on error to prevent infinite retries
-      })
-    }
+      },
+      { bypassCache: state.isLoading } // Bypass cache if already loading
+    )
   },
   
   // Save data to server (debounced)

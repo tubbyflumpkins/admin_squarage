@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Sale, SalesFilters, SortBy, SaleStatus, FilterBy, SaleSubtask, DeliveryMethod, Collection, Product } from './salesTypes'
+import { loadingCoordinator } from './loadingCoordinator'
 
 interface SalesStore {
   // State
@@ -68,71 +69,76 @@ const useSalesStore = create<SalesStore>((set, get) => ({
   isLoading: false,
   hasLoadedFromServer: false,
   
-  // Load data from server
+  // Load data from server with coordination to prevent multiple simultaneous loads
   loadFromServer: async () => {
     const state = get()
-    // Prevent concurrent loads but always allow fresh data fetch
-    if (state.isLoading) {
-      console.log('Already loading sales, skipping concurrent request...')
-      return
-    }
     
-    set({ isLoading: true })
-    
-    try {
-      console.log('Loading sales data from server...')
-      const response = await fetch('/api/sales/neon', {
-        credentials: 'include' // Ensure cookies are sent with request
-      })
-      
-      if (!response.ok) {
-        console.error(`Sales API returned ${response.status}: ${response.statusText}`)
+    // Use the loading coordinator to prevent multiple simultaneous requests
+    return loadingCoordinator.coordinatedLoad(
+      'sales-data',
+      async () => {
+        set({ isLoading: true })
         
-        // Handle authentication errors specifically
-        if (response.status === 401) {
-          console.error('Authentication error - redirecting to login')
-          // In a browser environment, redirect to login
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login'
+        try {
+          console.log('Loading sales data from server...')
+          const response = await fetch('/api/sales/neon', {
+            credentials: 'include' // Ensure cookies are sent with request
+          })
+          
+          if (!response.ok) {
+            console.error(`Sales API returned ${response.status}: ${response.statusText}`)
+            
+            // Handle authentication errors specifically
+            if (response.status === 401) {
+              console.error('Authentication error - redirecting to login')
+              // In a browser environment, redirect to login
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login'
+              }
+              throw new Error('Authentication required')
+            }
+            
+            const errorText = await response.text()
+            console.error('Error response:', errorText)
+            throw new Error(`Failed to load sales data: ${response.status}`)
           }
-          throw new Error('Authentication required')
+          
+          const data = await response.json()
+          console.log('Sales data loaded from server:', {
+            salesCount: data.sales?.length || 0
+          })
+          
+          // Always update state with received data (even if some parts are empty)
+          set({
+            sales: data.sales || [],
+            collections: data.collections || [],
+            products: data.products || [],
+            isLoading: false,
+            hasLoadedFromServer: true
+          })
+          
+          console.log('Sales store updated with:', {
+            salesCount: data.sales?.length || 0,
+            collectionsCount: data.collections?.length || 0,
+            productsCount: data.products?.length || 0
+          })
+          
+          return data
+        } catch (error) {
+          console.error('Error loading sales data from server:', error)
+          // Try to provide helpful error messages
+          if (error instanceof TypeError && error.message.includes('fetch')) {
+            console.error('Network error - could not connect to Sales API')
+          }
+          set({ 
+            isLoading: false,
+            hasLoadedFromServer: true // Mark as loaded even on error to prevent infinite retries
+          })
+          throw error
         }
-        
-        const errorText = await response.text()
-        console.error('Error response:', errorText)
-        throw new Error(`Failed to load sales data: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      console.log('Sales data loaded from server:', {
-        salesCount: data.sales?.length || 0
-      })
-      
-      // Always update state with received data (even if some parts are empty)
-      set({
-        sales: data.sales || [],
-        collections: data.collections || [],
-        products: data.products || [],
-        isLoading: false,
-        hasLoadedFromServer: true
-      })
-      
-      console.log('Sales store updated with:', {
-        salesCount: data.sales?.length || 0,
-        collectionsCount: data.collections?.length || 0,
-        productsCount: data.products?.length || 0
-      })
-    } catch (error) {
-      console.error('Error loading sales data from server:', error)
-      // Try to provide helpful error messages
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error('Network error - could not connect to Sales API')
-      }
-      set({ 
-        isLoading: false,
-        hasLoadedFromServer: true // Mark as loaded even on error to prevent infinite retries
-      })
-    }
+      },
+      { bypassCache: state.isLoading }
+    )
   },
   
   // Save data to server (debounced)

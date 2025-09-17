@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { QuickLink, QuickLinksFilters } from './quickLinksTypes'
+import { loadingCoordinator } from './loadingCoordinator'
 
 interface QuickLinksStore {
   // State
@@ -38,46 +39,55 @@ const useQuickLinksStore = create<QuickLinksStore>((set, get) => ({
   isLoading: false,
   hasLoadedFromServer: false,
   
-  // Load data from server
+  // Load data from server with coordination to prevent multiple simultaneous loads
   loadFromServer: async () => {
     const state = get()
-    if (state.isLoading) {
-      console.log('Already loading quick links, skipping concurrent request...')
-      return
-    }
     
-    set({ isLoading: true })
-    
-    try {
-      console.log('Loading quick links from server...')
-      const response = await fetch('/api/quick-links/neon', {
-        credentials: 'include'
-      })
-      
-      if (!response.ok) {
-        console.error(`API returned ${response.status}: ${response.statusText}`)
-        if (response.status === 401) {
-          console.error('Authentication error - redirecting to login')
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login'
+    // Use the loading coordinator to prevent multiple simultaneous requests
+    return loadingCoordinator.coordinatedLoad(
+      'quicklinks-data',
+      async () => {
+        set({ isLoading: true })
+        
+        try {
+          console.log('Loading quick links from server...')
+          const response = await fetch('/api/quick-links/neon', {
+            credentials: 'include'
+          })
+          
+          if (!response.ok) {
+            console.error(`API returned ${response.status}: ${response.statusText}`)
+            if (response.status === 401) {
+              console.error('Authentication error - redirecting to login')
+              if (typeof window !== 'undefined') {
+                window.location.href = '/login'
+              }
+              throw new Error('Authentication required')
+            }
+            throw new Error(`Failed to load quick links: ${response.statusText}`)
           }
-          return
+          
+          const data = await response.json()
+          console.log('Loaded quick links:', data)
+          
+          set({
+            quickLinks: data.quickLinks || [],
+            isLoading: false,
+            hasLoadedFromServer: true
+          })
+          
+          return data
+        } catch (error) {
+          console.error('Failed to load quick links:', error)
+          set({ 
+            isLoading: false,
+            hasLoadedFromServer: true 
+          })
+          throw error
         }
-        throw new Error(`Failed to load quick links: ${response.statusText}`)
-      }
-      
-      const data = await response.json()
-      console.log('Loaded quick links:', data)
-      
-      set({
-        quickLinks: data.quickLinks || [],
-        isLoading: false,
-        hasLoadedFromServer: true
-      })
-    } catch (error) {
-      console.error('Failed to load quick links:', error)
-      set({ isLoading: false })
-    }
+      },
+      { bypassCache: state.isLoading }
+    )
   },
 
   // Save data to server
