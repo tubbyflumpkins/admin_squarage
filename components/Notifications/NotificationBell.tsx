@@ -15,39 +15,137 @@ interface Notification {
   createdAt: string
 }
 
+// Cache configuration
+const CACHE_KEY = 'notification_cache'
+const CACHE_TTL = 60000 // 1 minute TTL for cache
+const POLL_INTERVAL_BASE = 300000 // 5 minutes base polling interval
+const MAX_POLL_INTERVAL = 900000 // 15 minutes max polling interval
+
+interface CachedData {
+  notifications: Notification[]
+  unreadCount: number
+  timestamp: number
+}
+
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [pollInterval, setPollInterval] = useState(POLL_INTERVAL_BASE)
+  const [isPageVisible, setIsPageVisible] = useState(true)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
+  const pollTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const retryCountRef = useRef(0)
 
-  // Fetch notifications
-  const fetchNotifications = useCallback(async () => {
+  // Cache helpers
+  const getCachedData = (): CachedData | null => {
+    if (typeof window === 'undefined') return null
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY)
+      if (!cached) return null
+      
+      const data = JSON.parse(cached) as CachedData
+      const now = Date.now()
+      
+      // Check if cache is still valid
+      if (now - data.timestamp > CACHE_TTL) {
+        sessionStorage.removeItem(CACHE_KEY)
+        return null
+      }
+      
+      return data
+    } catch (error) {
+      console.error('Error reading cache:', error)
+      return null
+    }
+  }
+
+  const setCachedData = (notifications: Notification[], unreadCount: number) => {
+    if (typeof window === 'undefined') return
+    try {
+      const data: CachedData = {
+        notifications,
+        unreadCount,
+        timestamp: Date.now()
+      }
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(data))
+    } catch (error) {
+      console.error('Error setting cache:', error)
+    }
+  }
+
+  // Fetch notifications with caching
+  const fetchNotifications = useCallback(async (forceRefresh = false) => {
+    // Check cache first unless forced refresh
+    if (!forceRefresh) {
+      const cached = getCachedData()
+      if (cached) {
+        setNotifications(cached.notifications)
+        setUnreadCount(cached.unreadCount)
+        return { fromCache: true }
+      }
+    }
+
     try {
       const response = await fetch('/api/notifications?limit=20')
       if (response.ok) {
         const data = await response.json()
         setNotifications(data.notifications)
+        
+        // Reset retry count on successful fetch
+        retryCountRef.current = 0
+        setPollInterval(POLL_INTERVAL_BASE)
+        
+        return { fromCache: false, notifications: data.notifications }
       }
     } catch (error) {
       console.error('Error fetching notifications:', error)
+      
+      // Implement exponential backoff on error
+      retryCountRef.current++
+      const newInterval = Math.min(
+        POLL_INTERVAL_BASE * Math.pow(2, retryCountRef.current),
+        MAX_POLL_INTERVAL
+      )
+      setPollInterval(newInterval)
     }
   }, [])
 
-  // Fetch unread count
-  const fetchUnreadCount = useCallback(async () => {
+  // Fetch unread count with caching
+  const fetchUnreadCount = useCallback(async (forceRefresh = false) => {
+    // Use cached count if available
+    if (!forceRefresh) {
+      const cached = getCachedData()
+      if (cached) {
+        setUnreadCount(cached.unreadCount)
+        return { fromCache: true }
+      }
+    }
+
     try {
       const response = await fetch('/api/notifications/unread-count')
       if (response.ok) {
         const data = await response.json()
         setUnreadCount(data.count)
+        return { fromCache: false, count: data.count }
       }
     } catch (error) {
       console.error('Error fetching unread count:', error)
     }
   }, [])
+
+  // Combined fetch with caching
+  const fetchAllData = useCallback(async (forceRefresh = false) => {
+    const notifResult = await fetchNotifications(forceRefresh)
+    const countResult = await fetchUnreadCount(forceRefresh)
+    
+    // Update cache if we fetched fresh data
+    if (notifResult && !notifResult.fromCache) {
+      setCachedData(notifications, unreadCount)
+    }
+  }, [fetchNotifications, fetchUnreadCount, notifications, unreadCount])
 
   // Mark notification as read
   const markAsRead = async (notificationId: string) => {
@@ -56,9 +154,13 @@ export default function NotificationBell() {
         method: 'PUT'
       })
       if (response.ok) {
-        setNotifications(prev => 
-          prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-        )
+        setNotifications(prev => {
+          const updated = prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+          const newUnreadCount = Math.max(0, unreadCount - 1)
+          // Update cache
+          setCachedData(updated, newUnreadCount)
+          return updated
+        })
         setUnreadCount(prev => Math.max(0, prev - 1))
       }
     } catch (error) {
@@ -74,7 +176,12 @@ export default function NotificationBell() {
         method: 'PUT'
       })
       if (response.ok) {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+        setNotifications(prev => {
+          const updated = prev.map(n => ({ ...n, read: true }))
+          // Update cache
+          setCachedData(updated, 0)
+          return updated
+        })
         setUnreadCount(0)
       }
     } catch (error) {
@@ -94,6 +201,8 @@ export default function NotificationBell() {
       if (response.ok) {
         setNotifications([])
         setUnreadCount(0)
+        // Clear cache
+        sessionStorage.removeItem(CACHE_KEY)
       }
     } catch (error) {
       console.error('Error clearing all notifications:', error)
@@ -102,10 +211,73 @@ export default function NotificationBell() {
     }
   }
 
-  // Set up real-time updates via SSE
+  // Page visibility handling
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      const visible = !document.hidden
+      setIsPageVisible(visible)
+      
+      if (visible) {
+        // Page became visible - fetch fresh data
+        fetchAllData(true)
+      } else {
+        // Page hidden - clear polling timer
+        if (pollTimerRef.current) {
+          clearTimeout(pollTimerRef.current)
+          pollTimerRef.current = null
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [fetchAllData])
+
+  // Set up polling with visibility awareness
+  useEffect(() => {
+    const setupPolling = () => {
+      // Clear existing timer
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current)
+      }
+      
+      // Only poll if page is visible
+      if (isPageVisible) {
+        pollTimerRef.current = setTimeout(() => {
+          fetchAllData(false) // Use cache if available
+          setupPolling() // Schedule next poll
+        }, pollInterval)
+      }
+    }
+
+    // Initial data load
+    fetchAllData(false) // Try cache first on initial load
+    
+    // Start polling
+    setupPolling()
+    
+    return () => {
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current)
+      }
+    }
+  }, [fetchAllData, pollInterval, isPageVisible])
+
+  // Optional: Try SSE with better error handling
+  useEffect(() => {
+    if (!isPageVisible) return // Don't setup SSE if page not visible
+
     const setupSSE = () => {
       try {
+        // Only try SSE once, don't retry on failure
+        if (retryCountRef.current > 0) {
+          console.log('SSE disabled after initial failure, using polling')
+          return
+        }
+
         eventSourceRef.current = new EventSource('/api/notifications/stream')
         
         eventSourceRef.current.onmessage = (event) => {
@@ -113,7 +285,12 @@ export default function NotificationBell() {
           
           if (data.type === 'new-notification') {
             // Add new notification to the top of the list
-            setNotifications(prev => [data.notification, ...prev].slice(0, 20))
+            setNotifications(prev => {
+              const updated = [data.notification, ...prev].slice(0, 20)
+              // Update cache with new notification
+              setCachedData(updated, unreadCount + 1)
+              return updated
+            })
             setUnreadCount(prev => prev + 1)
             
             // Show browser notification if permission granted
@@ -130,33 +307,26 @@ export default function NotificationBell() {
         }
         
         eventSourceRef.current.onerror = () => {
-          console.error('SSE connection error, falling back to polling')
-          // Fall back to polling
-          const pollInterval = setInterval(() => {
-            fetchNotifications()
-            fetchUnreadCount()
-          }, 30000) // Poll every 30 seconds
-          
-          return () => clearInterval(pollInterval)
+          console.log('SSE connection failed, using polling instead')
+          eventSourceRef.current?.close()
+          eventSourceRef.current = null
+          retryCountRef.current = 1 // Mark SSE as failed
         }
       } catch (error) {
-        console.error('Error setting up SSE:', error)
+        console.log('SSE not supported or failed, using polling')
+        retryCountRef.current = 1
       }
     }
     
-    // Initial fetch
-    fetchNotifications()
-    fetchUnreadCount()
-    
-    // Set up SSE
     setupSSE()
     
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close()
+        eventSourceRef.current = null
       }
     }
-  }, [fetchNotifications, fetchUnreadCount])
+  }, [isPageVisible, unreadCount, setCachedData])
 
   // Handle click outside to close dropdown
   useEffect(() => {
