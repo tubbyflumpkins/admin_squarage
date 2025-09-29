@@ -140,6 +140,20 @@ export const quickLinks = pgTable('quick_links', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+// Email Subscribers table
+export const emailSubscribers = pgTable('email_subscribers', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  source: varchar('source', { length: 50 }).default('popup').notNull(),
+  discountCode: varchar('discount_code', { length: 50 }),
+  consentMarketing: boolean('consent_marketing').default(false).notNull(),
+  consentTimestamp: timestamp('consent_timestamp'),
+  ipAddress: varchar('ip_address', { length: 45 }), // Support IPv4 and IPv6
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 // Notifications table
 export const notifications = pgTable('notifications', {
   id: varchar('id', { length: 255 }).primaryKey(),
@@ -308,3 +322,5 @@ export type PushSubscription = typeof pushSubscriptions.$inferSelect
 export type NewPushSubscription = typeof pushSubscriptions.$inferInsert
 export type NotificationPreferences = typeof notificationPreferences.$inferSelect
 export type NewNotificationPreferences = typeof notificationPreferences.$inferInsert
+export type EmailSubscriber = typeof emailSubscribers.$inferSelect
+export type NewEmailSubscriber = typeof emailSubscribers.$inferInsert
