@@ -25,7 +25,7 @@ export default function EmailTemplateViewer({
 
   useEffect(() => {
     fetchPreview()
-  }, [templateId])
+  }, [templateId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Add custom styles for email content

@@ -62,7 +62,7 @@ export const WelcomeEmail = ({
           <Section style={heroSection}>
             <Heading style={h1}>Welcome to Squarage!</Heading>
             <Text style={heroText}>
-              Thank you for joining our community. We're excited to have you here.
+              Thank you for joining our community. We&apos;re excited to have you here.
             </Text>
           </Section>
 
@@ -101,7 +101,7 @@ export const WelcomeEmail = ({
               </Link>
             </div>
             <Text style={footerText}>
-              You're receiving this email because you signed up at squarage.com
+              You&apos;re receiving this email because you signed up at squarage.com
             </Text>
           </Section>
         </Container>

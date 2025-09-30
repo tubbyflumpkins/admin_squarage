@@ -27,6 +27,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
+      )
+    }
+
     // Get all subscribers
     const subscribers = await db
       .select()

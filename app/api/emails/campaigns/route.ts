@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
+      )
+    }
+
     const campaigns = await db
       .select()
       .from(emailCampaigns)
@@ -59,6 +66,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, message: 'Campaign name is required' },
         { status: 400 }
+      )
+    }
+
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
       )
     }
 
@@ -113,6 +127,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { success: false, message: 'Campaign ID required' },
         { status: 400 }
+      )
+    }
+
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
       )
     }
 

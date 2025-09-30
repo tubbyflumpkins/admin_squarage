@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
+      )
+    }
+
     // Fetch pending and recent emails from queue
     const queuedEmails = await db
       .select()
@@ -69,6 +76,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
+      )
+    }
+
     // Add to queue
     const queueId = randomUUID()
     await db.insert(emailQueue).values({
@@ -110,6 +124,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { success: false, message: 'Invalid cron secret' },
         { status: 401 }
+      )
+    }
+
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
       )
     }
 

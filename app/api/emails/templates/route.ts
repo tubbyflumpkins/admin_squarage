@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
+      )
+    }
+
     const templates = await db
       .select()
       .from(emailTemplates)
@@ -62,6 +69,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, message: 'Name and subject are required' },
         { status: 400 }
+      )
+    }
+
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
       )
     }
 
@@ -120,6 +134,13 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
+      )
+    }
+
     // Update template
     await db
       .update(emailTemplates)
@@ -160,6 +181,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json(
         { success: false, message: 'Template ID required' },
         { status: 400 }
+      )
+    }
+
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
       )
     }
 

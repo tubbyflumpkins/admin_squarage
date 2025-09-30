@@ -61,6 +61,13 @@ export async function POST(request: NextRequest) {
       }))
       subject = 'Welcome to Squarage! Your 10% discount is inside'
     } else if (templateId) {
+      if (!db) {
+        return NextResponse.json(
+          { success: false, message: 'Database connection error' },
+          { status: 500 }
+        )
+      }
+
       // Fetch template from database for other types
       const template = await db
         .select()
@@ -95,6 +102,13 @@ export async function POST(request: NextRequest) {
     // Create email send record
     const sendId = randomUUID()
     const now = new Date()
+
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
+      )
+    }
 
     // Log the email send attempt
     await db.insert(emailSends).values({

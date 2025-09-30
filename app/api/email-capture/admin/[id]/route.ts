@@ -29,6 +29,13 @@ export async function DELETE(
       )
     }
 
+    if (!db) {
+      return NextResponse.json(
+        { success: false, message: 'Database connection error' },
+        { status: 500 }
+      )
+    }
+
     // Check if subscriber exists
     const existing = await db
       .select()

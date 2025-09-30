@@ -174,6 +174,16 @@ export async function POST(request: NextRequest) {
       ? body.discountCode.trim().toUpperCase().substring(0, 50)
       : null
 
+    if (!db) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'Database connection error' }),
+        {
+          status: 500,
+          headers: corsHeaders
+        }
+      )
+    }
+
     // Check if email already exists
     const existingSubscriber = await db
       .select()
