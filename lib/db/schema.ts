@@ -324,3 +324,72 @@ export type NotificationPreferences = typeof notificationPreferences.$inferSelec
 export type NewNotificationPreferences = typeof notificationPreferences.$inferInsert
 export type EmailSubscriber = typeof emailSubscribers.$inferSelect
 export type NewEmailSubscriber = typeof emailSubscribers.$inferInsert
+
+// Email Templates table
+export const emailTemplates = pgTable('email_templates', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  subject: text('subject').notNull(),
+  htmlContent: text('html_content'),
+  reactComponent: text('react_component'), // Stores the component name/type
+  variables: jsonb('variables').$type<Record<string, any>>(), // Variable schema for template
+  category: varchar('category', { length: 50 }).default('marketing').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Email Campaigns table
+export const emailCampaigns = pgTable('email_campaigns', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  templateId: varchar('template_id', { length: 255 }).references(() => emailTemplates.id, { onDelete: 'set null' }),
+  status: varchar('status', { length: 50 }).default('draft').notNull(), // draft, scheduled, sending, sent, failed
+  scheduledAt: timestamp('scheduled_at'),
+  sentAt: timestamp('sent_at'),
+  recipientCount: integer('recipient_count').default(0).notNull(),
+  segmentRules: jsonb('segment_rules').$type<Record<string, any>>(), // Segmentation criteria
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Email Sends table (log of all sent emails)
+export const emailSends = pgTable('email_sends', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  campaignId: varchar('campaign_id', { length: 255 }).references(() => emailCampaigns.id, { onDelete: 'cascade' }),
+  recipientEmail: varchar('recipient_email', { length: 255 }).notNull(),
+  templateId: varchar('template_id', { length: 255 }).references(() => emailTemplates.id, { onDelete: 'set null' }),
+  status: varchar('status', { length: 50 }).notNull(), // pending, sent, delivered, opened, clicked, bounced, failed
+  sentAt: timestamp('sent_at'),
+  openedAt: timestamp('opened_at'),
+  clickedAt: timestamp('clicked_at'),
+  resendId: varchar('resend_id', { length: 255 }), // Resend's email ID for tracking
+  errorMessage: text('error_message'),
+  metadata: jsonb('metadata').$type<Record<string, any>>(), // Additional tracking data
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Email Queue table
+export const emailQueue = pgTable('email_queue', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  recipientEmail: varchar('recipient_email', { length: 255 }).notNull(),
+  templateId: varchar('template_id', { length: 255 }).references(() => emailTemplates.id, { onDelete: 'cascade' }),
+  variables: jsonb('variables').$type<Record<string, any>>(), // Template variables
+  priority: integer('priority').default(5).notNull(), // 1-10, higher = more priority
+  scheduledFor: timestamp('scheduled_for').defaultNow().notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  status: varchar('status', { length: 50 }).default('pending').notNull(), // pending, processing, sent, failed
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  processedAt: timestamp('processed_at'),
+})
+
+// Type exports for new email tables
+export type EmailTemplate = typeof emailTemplates.$inferSelect
+export type NewEmailTemplate = typeof emailTemplates.$inferInsert
+export type EmailCampaign = typeof emailCampaigns.$inferSelect
+export type NewEmailCampaign = typeof emailCampaigns.$inferInsert
+export type EmailSend = typeof emailSends.$inferSelect
+export type NewEmailSend = typeof emailSends.$inferInsert
+export type EmailQueue = typeof emailQueue.$inferSelect
+export type NewEmailQueue = typeof emailQueue.$inferInsert

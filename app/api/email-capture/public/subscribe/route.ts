@@ -266,6 +266,54 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date()
     })
 
+    // Send welcome email if discount code was generated and user consented
+    if (consentMarketing && finalDiscountCode && finalDiscountCode !== 'PENDING') {
+      try {
+        // Queue welcome email
+        const queueResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/emails/queue`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              recipient: trimmedEmail,
+              templateId: 'welcome-email', // We'll use a special ID for the welcome template
+              variables: {
+                discountCode: finalDiscountCode,
+                customerEmail: trimmedEmail,
+              },
+              priority: 10, // High priority for welcome emails
+              scheduledFor: new Date(), // Send immediately
+              skipAuth: true,
+            }),
+          }
+        )
+
+        if (!queueResponse.ok) {
+          console.error('Failed to queue welcome email:', await queueResponse.text())
+        } else {
+          console.log(`Welcome email queued for ${trimmedEmail}`)
+
+          // Immediately process the queue for welcome emails
+          fetch(
+            `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/emails/queue`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-cron-secret': process.env.CRON_SECRET || ''
+              },
+            }
+          ).catch(error => {
+            console.error('Failed to process email queue:', error)
+          })
+        }
+      } catch (error) {
+        console.error('Error sending welcome email:', error)
+        // Don't fail the subscription if email fails
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
