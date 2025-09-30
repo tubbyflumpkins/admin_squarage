@@ -508,17 +508,9 @@ export async function POST(request: Request) {
           
           // Send notification to all recipients
           for (const userId of recipientUsers) {
-            // Skip self-notifications for all cases except completed/dead status
-            // For completed/dead: optionally notify everyone including self (team celebration)
-            // For all other changes: only notify OTHER users, never self
-            // TODO: Consider making self-notification for completed tasks configurable per user preference
-            const isCompletedOrDead = trigger.type === 'status_changed' &&
-                                     (trigger.todo.status === 'completed' || trigger.todo.status === 'dead')
-
-            // Only send notification if:
-            // 1. It's a completed/dead task (notify everyone for team awareness)
-            // 2. OR it's a different user (never notify self for own actions)
-            if (isCompletedOrDead || userId !== session.user.id) {
+            // NEVER send self-notifications - always exclude the person making the change
+            // This prevents Dylan from getting notifications for his own changes
+            if (userId !== session.user.id) {
               await createNotification({
                 userId: userId,
                 type: trigger.type === 'created' ? 'task_created' : 

@@ -46,11 +46,17 @@ export default function Header() {
             >
               Calendar
             </Link>
-            <Link 
-              href="/quick-links" 
+            <Link
+              href="/quick-links"
               className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
             >
               Quick Links
+            </Link>
+            <Link
+              href="/email"
+              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
+            >
+              Email
             </Link>
             <div className="flex items-center space-x-3 ml-2">
               <NotificationBell />

@@ -32,7 +32,7 @@ export default function PWARegister() {
           console.log('Service worker unregistered (desktop mode)')
         })
       })
-      
+
       // Clear all caches on desktop
       if ('caches' in window) {
         caches.keys().then(names => {
@@ -42,9 +42,15 @@ export default function PWARegister() {
           })
         })
       }
+
+      // Clean up mobile update interval if exists
+      if ((window as any).__pwaMobileUpdateInterval) {
+        clearInterval((window as any).__pwaMobileUpdateInterval)
+        delete (window as any).__pwaMobileUpdateInterval
+      }
       return
     }
-    
+
     // For MOBILE: Register service worker if authenticated
     if (isMobile && status === 'authenticated' && 'serviceWorker' in navigator) {
       // Wait for window load
@@ -52,7 +58,22 @@ export default function PWARegister() {
         registerServiceWorker()
       } else {
         window.addEventListener('load', registerServiceWorker)
-        return () => window.removeEventListener('load', registerServiceWorker)
+        return () => {
+          window.removeEventListener('load', registerServiceWorker)
+          // Clean up update interval
+          if ((window as any).__pwaMobileUpdateInterval) {
+            clearInterval((window as any).__pwaMobileUpdateInterval)
+            delete (window as any).__pwaMobileUpdateInterval
+          }
+        }
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if ((window as any).__pwaMobileUpdateInterval) {
+        clearInterval((window as any).__pwaMobileUpdateInterval)
+        delete (window as any).__pwaMobileUpdateInterval
       }
     }
   }, [status, isMobile])
@@ -62,10 +83,13 @@ export default function PWARegister() {
       const registration = await navigator.serviceWorker.register('/sw-mobile.js')
       console.log('Mobile Service Worker registered:', registration)
 
-      // Check for updates every hour
-      setInterval(() => {
+      // Check for updates every hour - STORE INTERVAL REF FOR CLEANUP
+      const updateInterval = setInterval(() => {
         registration.update()
       }, 60 * 60 * 1000)
+
+      // Store interval for cleanup
+      ;(window as any).__pwaMobileUpdateInterval = updateInterval
 
       // Handle updates
       registration.addEventListener('updatefound', () => {
