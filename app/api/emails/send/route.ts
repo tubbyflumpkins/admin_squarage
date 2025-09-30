@@ -9,8 +9,11 @@ import { eq } from 'drizzle-orm'
 import { randomUUID } from 'crypto'
 import { WelcomeEmail } from '@/components/Email/templates/WelcomeEmail'
 
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Initialize Resend client (only when API key is available)
+let resend: Resend | null = null
+if (process.env.RESEND_API_KEY) {
+  resend = new Resend(process.env.RESEND_API_KEY)
+}
 
 // Email sender configuration
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'hello@squarage.com'
@@ -127,6 +130,10 @@ export async function POST(request: NextRequest) {
     })
 
     try {
+      if (!resend) {
+        throw new Error('Email service not configured - missing API key')
+      }
+
       // Send email via Resend
       const { data, error } = await resend.emails.send({
         from: `Squarage <${FROM_EMAIL}>`,
