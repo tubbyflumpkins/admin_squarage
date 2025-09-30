@@ -35,7 +35,7 @@ export const WelcomeEmail = ({
       <Head>
         <Font
           fontFamily="Helvetica Neue"
-          fallbackFontFamily="Helvetica, Arial, sans-serif"
+          fallbackFontFamily={["Helvetica", "Arial", "sans-serif"]}
           webFont={{
             url: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
             format: 'woff2',
