@@ -49,10 +49,13 @@ export default function NotificationServiceWorker() {
         console.log('Notification Service Worker registered:', registration)
         setSwRegistration(registration)
 
-        // Check for updates periodically
-        setInterval(() => {
+        // Check for updates periodically - STORE INTERVAL REF FOR CLEANUP
+        const updateInterval = setInterval(() => {
           registration.update()
         }, 60 * 60 * 1000) // Check every hour
+
+        // Store interval for cleanup
+        ;(window as any).__swUpdateInterval = updateInterval
 
         // Handle updates
         registration.addEventListener('updatefound', () => {
@@ -118,7 +121,22 @@ export default function NotificationServiceWorker() {
       registerServiceWorker()
     } else {
       window.addEventListener('load', registerServiceWorker)
-      return () => window.removeEventListener('load', registerServiceWorker)
+      return () => {
+        window.removeEventListener('load', registerServiceWorker)
+        // Clean up update interval
+        if ((window as any).__swUpdateInterval) {
+          clearInterval((window as any).__swUpdateInterval)
+          delete (window as any).__swUpdateInterval
+        }
+      }
+    }
+
+    // Also clean up on unmount
+    return () => {
+      if ((window as any).__swUpdateInterval) {
+        clearInterval((window as any).__swUpdateInterval)
+        delete (window as any).__swUpdateInterval
+      }
     }
   }, [status, swRegistration])
 

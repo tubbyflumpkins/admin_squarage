@@ -26,6 +26,14 @@ function checkRateLimit(identifier: string): boolean {
   const now = Date.now()
   const limit = rateLimitMap.get(identifier)
 
+  // Lazy cleanup: Remove expired entries on-the-fly instead of using setInterval
+  // This is better for serverless environments where setInterval persists
+  for (const [key, value] of rateLimitMap.entries()) {
+    if (now > value.resetTime) {
+      rateLimitMap.delete(key)
+    }
+  }
+
   if (!limit || now > limit.resetTime) {
     rateLimitMap.set(identifier, {
       count: 1,
@@ -41,16 +49,6 @@ function checkRateLimit(identifier: string): boolean {
   limit.count++
   return true
 }
-
-// Clean up old rate limit entries periodically
-setInterval(() => {
-  const now = Date.now()
-  for (const [key, value] of rateLimitMap.entries()) {
-    if (now > value.resetTime) {
-      rateLimitMap.delete(key)
-    }
-  }
-}, RATE_LIMIT_WINDOW)
 
 function getCorsHeaders(origin: string | null) {
   // Check if origin is allowed

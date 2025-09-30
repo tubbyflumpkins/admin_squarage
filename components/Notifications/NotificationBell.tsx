@@ -104,18 +104,20 @@ export default function NotificationBell() {
 
   // Set up real-time updates via SSE
   useEffect(() => {
+    let pollInterval: NodeJS.Timeout | null = null
+
     const setupSSE = () => {
       try {
         eventSourceRef.current = new EventSource('/api/notifications/stream')
-        
+
         eventSourceRef.current.onmessage = (event) => {
           const data = JSON.parse(event.data)
-          
+
           if (data.type === 'new-notification') {
             // Add new notification to the top of the list
             setNotifications(prev => [data.notification, ...prev].slice(0, 20))
             setUnreadCount(prev => prev + 1)
-            
+
             // Show browser notification if permission granted
             if ('Notification' in window && Notification.permission === 'granted') {
               new Notification(data.notification.title, {
@@ -128,32 +130,34 @@ export default function NotificationBell() {
             setUnreadCount(data.count)
           }
         }
-        
+
         eventSourceRef.current.onerror = () => {
           console.error('SSE connection error, falling back to polling')
-          // Fall back to polling
-          const pollInterval = setInterval(() => {
+          // Fall back to polling (store interval ref so we can clean it up)
+          pollInterval = setInterval(() => {
             fetchNotifications()
             fetchUnreadCount()
           }, 30000) // Poll every 30 seconds
-          
-          return () => clearInterval(pollInterval)
         }
       } catch (error) {
         console.error('Error setting up SSE:', error)
       }
     }
-    
+
     // Initial fetch
     fetchNotifications()
     fetchUnreadCount()
-    
+
     // Set up SSE
     setupSSE()
-    
+
+    // Cleanup function - CRITICAL: Clean up both SSE and polling interval
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close()
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval)
       }
     }
   }, [fetchNotifications, fetchUnreadCount])
