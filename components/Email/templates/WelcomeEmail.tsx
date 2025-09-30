@@ -70,7 +70,7 @@ export const WelcomeEmail = ({
           <Section style={discountSection}>
             <div style={discountBox}>
               <Text style={discountLabel}>Your Exclusive Welcome Offer</Text>
-              <Heading style={discountCode}>{discountCode}</Heading>
+              <Heading style={discountCodeStyle}>{discountCode}</Heading>
               <Text style={discountText}>
                 Enjoy <strong>10% off</strong> your first order
               </Text>
@@ -176,7 +176,7 @@ const discountLabel = {
   margin: '0 0 16px',
 }
 
-const discountCode = {
+const discountCodeStyle = {
   color: '#4A9B4E',
   fontSize: '36px',
   fontWeight: '700',
