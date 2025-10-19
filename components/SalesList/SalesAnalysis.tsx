@@ -456,9 +456,10 @@ export default function SalesAnalysis() {
       if (typeof cx !== 'number' || typeof cy !== 'number') return null
 
       const safeOuter = typeof outerRadius === 'number' ? outerRadius : 0
+      const safeMid = typeof midAngle === 'number' ? midAngle : 0
       const radius = safeOuter + 18
-      const x = cx + radius * Math.cos(-midAngle * RADIAN)
-      const y = cy + radius * Math.sin(-midAngle * RADIAN)
+      const x = cx + radius * Math.cos(-safeMid * RADIAN)
+      const y = cy + radius * Math.sin(-safeMid * RADIAN)
       const textAnchor = x > cx ? 'start' : 'end'
 
       const channelName = (payload as { name?: string })?.name ?? ''
