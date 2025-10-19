@@ -13,7 +13,6 @@ import {
   Pie,
   Cell,
   Legend,
-  type TooltipProps,
   type PieLabelRenderProps,
 } from 'recharts'
 import {
@@ -499,9 +498,11 @@ export default function SalesAnalysis() {
     }: PieLabelRenderProps) => {
       if (typeof cx !== 'number' || typeof cy !== 'number') return null
 
-      const radius = outerRadius + 18
-      const x = cx + radius * Math.cos(-midAngle * RADIAN)
-      const y = cy + radius * Math.sin(-midAngle * RADIAN)
+      const safeOuter = typeof outerRadius === 'number' ? outerRadius : 0
+      const safeMid = typeof midAngle === 'number' ? midAngle : 0
+      const radius = safeOuter + 18
+      const x = cx + radius * Math.cos(-safeMid * RADIAN)
+      const y = cy + radius * Math.sin(-safeMid * RADIAN)
       const textAnchor = x > cx ? 'start' : 'end'
 
       const channelName = (payload as { name?: string })?.name ?? ''
@@ -531,13 +532,10 @@ export default function SalesAnalysis() {
   )
 
   const renderCountTooltip = useCallback(
-    ({ active, payload }: TooltipProps<number, string>) => {
+    (tooltip: { active?: boolean; payload?: { payload?: ChannelTooltipPayload }[] }) => {
+      const { active, payload } = tooltip
       if (!active || !payload || payload.length === 0) return null
-      const dataPoint = payload[0].payload as {
-        name: string
-        salesCount: number
-        revenueCents: number
-      }
+      const dataPoint = payload[0]?.payload as ChannelTooltipPayload
 
       return (
         <div className="rounded-xl border border-white/10 bg-slate-900/90 px-4 py-3 text-white shadow-xl backdrop-blur-sm">
