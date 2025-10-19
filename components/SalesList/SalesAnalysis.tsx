@@ -414,9 +414,10 @@ export default function SalesAnalysis() {
   }, [filteredSales, products, channels, hasLoadedFromServer])
 
   const renderRevenueTooltip = useCallback(
-    ({ active, payload }: TooltipProps<number, string>) => {
+    (tooltip: TooltipProps<number, string>) => {
+      const { active, payload } = tooltip
       if (!active || !payload || payload.length === 0) return null
-      const dataPoint = payload[0].payload as {
+      const dataPoint = payload[0]?.payload as {
         name: string
         revenueCents: number
         revenue: number
