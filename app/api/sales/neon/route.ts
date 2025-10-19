@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db, isDatabaseConfigured } from '@/lib/db'
-import { sales, saleSubtasks, collections, products } from '@/lib/db/schema'
+import { sales, saleSubtasks, collections, products, saleChannels } from '@/lib/db/schema'
 import { eq, desc, sql as drizzleSql } from 'drizzle-orm'
-import type { Sale as StoreSale, SaleSubtask as StoreSaleSubtask, Collection as StoreCollection, Product as StoreProduct } from '@/lib/salesTypes'
+import type { Sale as StoreSale, SaleSubtask as StoreSaleSubtask, Collection as StoreCollection, Product as StoreProduct, SaleChannel as StoreSaleChannel } from '@/lib/salesTypes'
 
 // Fallback to JSON file if database is not configured
 async function fallbackToJsonFile() {
@@ -19,7 +19,8 @@ async function fallbackToJsonFile() {
     return {
       sales: [],
       collections: [],
-      products: []
+      products: [],
+      channels: [],
     }
   }
 }
@@ -51,11 +52,12 @@ export async function GET() {
     console.log('Database is configured, fetching sales data...')
     
     // Fetch all data from database
-    const [dbSales, dbSaleSubtasks, dbCollections, dbProducts] = await Promise.all([
+    const [dbSales, dbSaleSubtasks, dbCollections, dbProducts, dbChannels] = await Promise.all([
       db.select().from(sales).orderBy(desc(sales.createdAt)),
       db.select().from(saleSubtasks),
       db.select().from(collections).orderBy(collections.name),
-      db.select().from(products).orderBy(products.name)
+      db.select().from(products).orderBy(products.name),
+      db.select().from(saleChannels).orderBy(saleChannels.name)
     ])
 
     // Group subtasks by sale ID
@@ -80,6 +82,7 @@ export async function GET() {
       selectedColor: sale.selectedColor || undefined,
       placementDate: sale.placementDate!,
       deliveryMethod: sale.deliveryMethod as 'shipping' | 'local',
+      channelId: sale.channelId || undefined,
       status: sale.status as StoreSale['status'],
       notes: sale.notes || undefined,
       subtasks: subtasksBySaleId[sale.id] || undefined,
@@ -103,16 +106,24 @@ export async function GET() {
       collectionId: prod.collectionId
     }))
 
+    const transformedChannels: StoreSaleChannel[] = dbChannels.map(channel => ({
+      id: channel.id,
+      name: channel.name,
+      createdAt: channel.createdAt,
+    }))
+
     const response = {
       sales: transformedSales || [],
       collections: transformedCollections || [],
-      products: transformedProducts || []
+      products: transformedProducts || [],
+      channels: transformedChannels || [],
     }
     
     console.log('Sales data fetched successfully:', {
       sales: transformedSales.length,
       collections: transformedCollections.length,
-      products: transformedProducts.length
+      products: transformedProducts.length,
+      channels: transformedChannels.length,
     })
 
     return NextResponse.json(response)
@@ -139,8 +150,10 @@ export async function POST(request: Request) {
       salesCount: data.sales?.length || 0,
       collectionsCount: data.collections?.length || 0,
       productsCount: data.products?.length || 0,
+      channelsCount: data.channels?.length || 0,
       hasCollections: !!data.collections,
-      hasProducts: !!data.products
+      hasProducts: !!data.products,
+      hasChannels: !!data.channels,
     })
     
     // CRITICAL VALIDATION: Never accept empty state that would delete all data
@@ -152,7 +165,8 @@ export async function POST(request: Request) {
     // Check if this would result in deleting all data
     const hasAnyData = (data.sales && data.sales.length > 0) || 
                        (data.collections && data.collections.length > 0) || 
-                       (data.products && data.products.length > 0)
+                       (data.products && data.products.length > 0) ||
+                       (data.channels && data.channels.length > 0)
     
     if (!hasAnyData) {
       // Fetch current data to check if database has existing data
@@ -193,23 +207,26 @@ export async function POST(request: Request) {
     // This is much safer and prevents accidental data loss
     
     // Step 1: Get all existing IDs
-    const [existingSales, existingSaleSubtasks, existingCollections, existingProducts] = await Promise.all([
+    const [existingSales, existingSaleSubtasks, existingCollections, existingProducts, existingChannels] = await Promise.all([
       db.select({ id: sales.id }).from(sales),
       db.select({ id: saleSubtasks.id }).from(saleSubtasks),
       db.select({ id: collections.id }).from(collections),
-      db.select({ id: products.id }).from(products)
+      db.select({ id: products.id }).from(products),
+      db.select({ id: saleChannels.id }).from(saleChannels)
     ])
-    
+
     const existingSaleIds = new Set(existingSales.map(s => s.id))
     const existingSaleSubtaskIds = new Set(existingSaleSubtasks.map(s => s.id))
     const existingCollectionIds = new Set(existingCollections.map(c => c.id))
     const existingProductIds = new Set(existingProducts.map(p => p.id))
+    const existingChannelIds = new Set(existingChannels.map(a => a.id))
     
     // Step 2: Prepare incoming data IDs
     const incomingSaleIds = new Set(data.sales?.map((s: any) => s.id) || [])
     const incomingSaleSubtaskIds = new Set<string>()
     const incomingCollectionIds = new Set(data.collections?.map((c: any) => c.id) || [])
     const incomingProductIds = new Set(data.products?.map((p: any) => p.id) || [])
+    const incomingChannelIds = new Set(data.channels?.map((c: any) => c.id) || [])
     
     // Collect all subtask IDs
     if (data.sales) {
@@ -228,10 +245,13 @@ export async function POST(request: Request) {
     const saleSubtaskIdsToDelete = Array.from(existingSaleSubtaskIds).filter(id => !incomingSaleSubtaskIds.has(id))
     const collectionIdsToDelete = Array.from(existingCollectionIds).filter(id => !incomingCollectionIds.has(id))
     const productIdsToDelete = Array.from(existingProductIds).filter(id => !incomingProductIds.has(id))
+    const channelIdsToDelete = data.channels
+      ? Array.from(existingChannelIds).filter(id => !incomingChannelIds.has(id))
+      : []
     
     // SAFETY CHECK: Don't delete everything if incoming data seems incomplete
-    const totalExisting = existingSaleIds.size + existingCollectionIds.size + existingProductIds.size
-    const totalToDelete = saleIdsToDelete.length + collectionIdsToDelete.length + productIdsToDelete.length
+    const totalExisting = existingSaleIds.size + existingCollectionIds.size + existingProductIds.size + existingChannelIds.size
+    const totalToDelete = saleIdsToDelete.length + collectionIdsToDelete.length + productIdsToDelete.length + channelIdsToDelete.length
     
     if (totalExisting > 0 && totalToDelete === totalExisting) {
       console.error('SAFETY BLOCK: Refusing to delete all existing data')
@@ -262,8 +282,36 @@ export async function POST(request: Request) {
         drizzleSql`${collections.id} IN (${drizzleSql.join(collectionIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
       )
     }
-    
-    // Step 4: UPSERT sales and subtasks - process in batches for better performance
+    if (channelIdsToDelete.length > 0) {
+      await db.delete(saleChannels).where(
+        drizzleSql`${saleChannels.id} IN (${drizzleSql.join(channelIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
+      )
+    }
+
+    // Step 4: UPSERT channels first so sales references are valid
+    if (data.channels && data.channels.length > 0) {
+      const channelPromises = data.channels.map((channel: any) => {
+        const channelValues = {
+          id: channel.id,
+          name: channel.name,
+          createdAt: channel.createdAt ? new Date(channel.createdAt) : new Date(),
+        }
+
+        if (existingChannelIds.has(channel.id)) {
+          return db!.update(saleChannels)
+            .set({
+              name: channelValues.name,
+            })
+            .where(eq(saleChannels.id, channel.id))
+        }
+
+        return db!.insert(saleChannels).values(channelValues)
+      })
+
+      await Promise.all(channelPromises)
+    }
+
+    // Step 5: UPSERT sales and subtasks - process in batches for better performance
     if (data.sales && data.sales.length > 0) {
       // Process sales in smaller batches to avoid too many concurrent queries
       const BATCH_SIZE = 5
@@ -282,6 +330,7 @@ export async function POST(request: Request) {
           selectedColor: saleData.selectedColor || null,
           placementDate: new Date(saleData.placementDate),
           deliveryMethod: saleData.deliveryMethod,
+          channelId: saleData.channelId || null,
           status: saleData.status,
           notes: saleData.notes || null,
           createdAt: new Date(saleData.createdAt),
@@ -298,6 +347,7 @@ export async function POST(request: Request) {
                 selectedColor: saleValues.selectedColor,
                 placementDate: saleValues.placementDate,
                 deliveryMethod: saleValues.deliveryMethod,
+                channelId: saleValues.channelId,
                 status: saleValues.status,
                 notes: saleValues.notes,
                 updatedAt: saleValues.updatedAt
@@ -347,7 +397,7 @@ export async function POST(request: Request) {
       }
     }
     
-    // Step 5: UPSERT collections in parallel
+    // Step 6: UPSERT collections in parallel
     if (data.collections && data.collections.length > 0) {
       const collectionPromises = []
       
@@ -382,7 +432,7 @@ export async function POST(request: Request) {
       await Promise.all(collectionPromises)
     }
     
-    // Step 6: UPSERT products in parallel
+    // Step 7: UPSERT products in parallel
     if (data.products && data.products.length > 0) {
       const productPromises = []
       

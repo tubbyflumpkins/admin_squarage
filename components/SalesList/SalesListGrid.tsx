@@ -235,7 +235,7 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
 
       {/* Column Headers */}
       <div className="bg-squarage-white/50 rounded-t-lg border border-brown-light/30">
-        <div className="grid grid-cols-[14px_110px_1fr_100px_60px_80px_120px_100px_30px_32px] text-xs font-medium text-brown-medium uppercase tracking-wider">
+        <div className="grid grid-cols-[14px_110px_1fr_100px_60px_80px_120px_100px_105px_30px_32px] text-xs font-semibold text-brown-medium tracking-wide">
           <div className="px-2 py-1.5" /> {/* Space for drag handle */}
           <div className="px-2 py-1.5 text-center border-l border-brown-light/20">Status</div>
           
@@ -309,6 +309,10 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
           >
             Delivery
           </button>
+
+          <div className="px-2 py-1.5 border-l border-brown-light/20 text-center">
+            Channel
+          </div>
           
           <div className="px-1 py-1.5 text-center border-l border-brown-light/20" title="Subtasks">
             📋

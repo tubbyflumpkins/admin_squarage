@@ -31,6 +31,7 @@ export default function CollectionProductEditModal({
   const {
     collections,
     products,
+    channels,
     addCollection,
     updateCollection,
     deleteCollection,
@@ -40,6 +41,9 @@ export default function CollectionProductEditModal({
     updateProduct,
     deleteProduct,
     getProductsByCollection,
+    addChannel,
+    updateChannel,
+    deleteChannel,
   } = useSalesStore()
 
   const [newCollectionName, setNewCollectionName] = useState('')
@@ -58,6 +62,10 @@ export default function CollectionProductEditModal({
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [editingProductName, setEditingProductName] = useState('')
   const [editingProductRevenue, setEditingProductRevenue] = useState('')
+
+  const [newChannelName, setNewChannelName] = useState('')
+  const [editingChannelId, setEditingChannelId] = useState<string | null>(null)
+  const [editingChannelName, setEditingChannelName] = useState('')
   
   const newColorButtonRef = useRef<HTMLButtonElement>(null)
   const colorButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
@@ -160,6 +168,42 @@ export default function CollectionProductEditModal({
         setEditingProductId(null)
         setEditingProductName('')
         setEditingProductRevenue('')
+      }
+    }
+  }
+
+  const handleAddChannel = () => {
+    if (newChannelName.trim()) {
+      addChannel({ name: newChannelName.trim() })
+      setNewChannelName('')
+    }
+  }
+
+  const startEditChannel = (channelId: string, currentName: string) => {
+    setEditingChannelId(channelId)
+    setEditingChannelName(currentName)
+  }
+
+  const saveEditChannel = () => {
+    if (!editingChannelId) return
+
+    if (!editingChannelName.trim()) {
+      setEditingChannelId(null)
+      setEditingChannelName('')
+      return
+    }
+
+    updateChannel(editingChannelId, { name: editingChannelName.trim() })
+    setEditingChannelId(null)
+    setEditingChannelName('')
+  }
+
+  const handleDeleteChannel = (channelId: string) => {
+    if (confirm('Delete this channel option?')) {
+      deleteChannel(channelId)
+      if (editingChannelId === channelId) {
+        setEditingChannelId(null)
+        setEditingChannelName('')
       }
     }
   }
@@ -475,6 +519,105 @@ export default function CollectionProductEditModal({
                   </div>
                 )
               })}
+            </div>
+          )}
+        </div>
+        
+        {/* Manage Channels */}
+        <div className="space-y-3 border-t border-gray-200 pt-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-700">Manage Channels</h3>
+            <p className="text-xs text-gray-500">Channels populate the sales dropdown.</p>
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newChannelName}
+              onChange={(e) => setNewChannelName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleAddChannel()
+                }
+              }}
+              placeholder="Channel name..."
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-squarage-green"
+            />
+            <button
+              onClick={handleAddChannel}
+              disabled={!newChannelName.trim()}
+              className="px-4 py-2 bg-squarage-green text-white rounded-lg hover:bg-squarage-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <Plus size={16} />
+              Add
+            </button>
+          </div>
+
+          {channels.length === 0 ? (
+            <p className="text-gray-500 text-sm italic">No channels yet</p>
+          ) : (
+            <div className="space-y-2">
+              {channels.map(channel => (
+                <div key={channel.id} className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+                  {editingChannelId === channel.id ? (
+                    <>
+                      <input
+                        type="text"
+                        value={editingChannelName}
+                        onChange={(e) => setEditingChannelName(e.target.value)}
+                        onBlur={saveEditChannel}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            saveEditChannel()
+                          } else if (e.key === 'Escape') {
+                            setEditingChannelId(null)
+                            setEditingChannelName('')
+                          }
+                        }}
+                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-squarage-green"
+                        autoFocus
+                      />
+                      <button
+                        onClick={saveEditChannel}
+                        className="text-green-600 hover:text-green-700"
+                        title="Save channel"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingChannelId(null)
+                          setEditingChannelName('')
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
+                        title="Cancel"
+                      >
+                        ✕
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm text-gray-700">{channel.name}</span>
+                      <button
+                        onClick={() => startEditChannel(channel.id, channel.name)}
+                        className="text-gray-400 hover:text-squarage-green transition-colors"
+                        title="Edit channel"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteChannel(channel.id)}
+                        className="text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete channel"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>

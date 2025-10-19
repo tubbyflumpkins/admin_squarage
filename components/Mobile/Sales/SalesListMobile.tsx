@@ -126,6 +126,7 @@ export default function SalesListMobile() {
       placementDate: new Date(),
       deliveryMethod: 'shipping',
       status: 'not_started',
+      channelId: undefined,
       notes: '',
       subtasks: [],
       createdAt: new Date(),

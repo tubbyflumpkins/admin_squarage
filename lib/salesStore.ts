@@ -1,11 +1,12 @@
 import { create } from 'zustand'
-import { Sale, SalesFilters, SortBy, SaleStatus, FilterBy, SaleSubtask, DeliveryMethod, Collection, Product } from './salesTypes'
+import { Sale, SalesFilters, SortBy, SaleStatus, FilterBy, SaleSubtask, DeliveryMethod, Collection, Product, SaleChannel } from './salesTypes'
 
 interface SalesStore {
   // State
   sales: Sale[]
   collections: Collection[]
   products: Product[]
+  channels: SaleChannel[]
   filters: SalesFilters
   
   // Loading state
@@ -14,7 +15,7 @@ interface SalesStore {
   
   // Actions
   loadFromServer: () => Promise<void>
-  saveToServer: () => Promise<void>
+  saveToServer: (options?: { immediate?: boolean }) => Promise<void>
   
   addSale: (sale: Omit<Sale, 'id' | 'createdAt' | 'updatedAt'>) => void
   updateSale: (id: string, sale: Partial<Sale>) => void
@@ -37,6 +38,11 @@ interface SalesStore {
   deleteProduct: (id: string) => void
   getProductsByCollection: (collectionId: string) => Product[]
   
+  // Attribute management
+  addChannel: (channel: Omit<SaleChannel, 'id' | 'createdAt'>) => void
+  updateChannel: (id: string, channel: Partial<SaleChannel>) => void
+  deleteChannel: (id: string) => void
+  
   // Subtask management
   addSubtask: (saleId: string, text: string) => void
   updateSubtask: (saleId: string, subtaskId: string, updates: Partial<SaleSubtask>) => void
@@ -56,12 +62,14 @@ const useSalesStore = create<SalesStore>((set, get) => ({
   sales: [],
   collections: [],
   products: [],
+  channels: [],
   filters: {
     deliveryMethod: undefined,
     status: 'all' as FilterBy,
     sortBy: 'placementDate' as SortBy,
     productId: undefined,
     selectedColor: undefined,
+    channelId: undefined,
   },
   
   // Loading state
@@ -105,14 +113,26 @@ const useSalesStore = create<SalesStore>((set, get) => ({
       
       const data = await response.json()
       console.log('Sales data loaded from server:', {
-        salesCount: data.sales?.length || 0
+        salesCount: data.sales?.length || 0,
+        collectionsCount: data.collections?.length || 0,
+        productsCount: data.products?.length || 0,
+        channelsCount: data.channels?.length || 0,
       })
+
+      const normalizedChannels: SaleChannel[] = (data.channels || []).map((channel: any) => ({
+        ...channel,
+        createdAt: channel.createdAt ? new Date(channel.createdAt) : new Date(),
+      }))
+      const pendingChannels = state.channels.filter(
+        (channel) => !normalizedChannels.some((existing) => existing.id === channel.id)
+      )
       
       // Always update state with received data (even if some parts are empty)
       set({
         sales: data.sales || [],
         collections: data.collections || [],
         products: data.products || [],
+        channels: [...normalizedChannels, ...pendingChannels],
         isLoading: false,
         hasLoadedFromServer: true
       })
@@ -120,8 +140,16 @@ const useSalesStore = create<SalesStore>((set, get) => ({
       console.log('Sales store updated with:', {
         salesCount: data.sales?.length || 0,
         collectionsCount: data.collections?.length || 0,
-        productsCount: data.products?.length || 0
+        productsCount: data.products?.length || 0,
+        channelsCount: normalizedChannels.length,
       })
+
+      if (pendingChannels.length > 0) {
+        console.log('[SalesStore] Persisting pending channels after initial load...', {
+          pendingChannels: pendingChannels.length,
+        })
+        get().saveToServer()
+      }
     } catch (error) {
       console.error('Error loading sales data from server:', error)
       // Try to provide helpful error messages
@@ -136,7 +164,8 @@ const useSalesStore = create<SalesStore>((set, get) => ({
   },
   
   // Save data to server (debounced)
-  saveToServer: async () => {
+  saveToServer: async (options?: { immediate?: boolean }) => {
+    const immediate = options?.immediate ?? false
     const state = get()
     
     // Don't save if we haven't loaded from server yet
@@ -157,18 +186,14 @@ const useSalesStore = create<SalesStore>((set, get) => ({
       console.warn('Warning: Attempting to save empty sales state')
     }
     
-    // Clear existing timer
-    if (saveDebounceTimer) {
-      clearTimeout(saveDebounceTimer)
-    }
-    
-    // Debounce the save (5 second delay to batch multiple changes)
-    saveDebounceTimer = setTimeout(async () => {
+    const performSave = async () => {
+      const latestState = get()
       try {
         console.log('[SalesStore] Saving data to server after user action...', {
-          sales: state.sales.length,
-          collections: state.collections.length,
-          products: state.products.length,
+          sales: latestState.sales.length,
+          collections: latestState.collections.length,
+          products: latestState.products.length,
+          channels: latestState.channels.length,
           timestamp: new Date().toISOString()
         })
         const response = await fetch('/api/sales/neon', {
@@ -178,9 +203,10 @@ const useSalesStore = create<SalesStore>((set, get) => ({
           },
           credentials: 'include', // Ensure cookies are sent with request
           body: JSON.stringify({
-            sales: state.sales,
-            collections: state.collections,
-            products: state.products
+            sales: latestState.sales,
+            collections: latestState.collections,
+            products: latestState.products,
+            channels: latestState.channels,
           }),
         })
         
@@ -188,7 +214,6 @@ const useSalesStore = create<SalesStore>((set, get) => ({
           // Handle authentication errors specifically
           if (response.status === 401) {
             console.error('Authentication error while saving sales - redirecting to login')
-            // In a browser environment, redirect to login
             if (typeof window !== 'undefined') {
               window.location.href = '/login'
             }
@@ -207,7 +232,21 @@ const useSalesStore = create<SalesStore>((set, get) => ({
       } catch (error) {
         console.error('Error saving sales data:', error)
       }
-    }, SAVE_DEBOUNCE_MS)
+    }
+
+    if (immediate) {
+      if (saveDebounceTimer) {
+        clearTimeout(saveDebounceTimer)
+        saveDebounceTimer = null
+      }
+      await performSave()
+      return
+    }
+
+    if (saveDebounceTimer) {
+      clearTimeout(saveDebounceTimer)
+    }
+    saveDebounceTimer = setTimeout(performSave, SAVE_DEBOUNCE_MS)
   },
   
   // Add a new sale
@@ -304,6 +343,11 @@ const useSalesStore = create<SalesStore>((set, get) => ({
     // Apply color filter
     if (state.filters.selectedColor) {
       filtered = filtered.filter((s) => s.selectedColor === state.filters.selectedColor)
+    }
+
+    // Apply channel filter
+    if (state.filters.channelId) {
+      filtered = filtered.filter((s) => s.channelId === state.filters.channelId)
     }
     
     // Apply status filter
@@ -449,6 +493,42 @@ const useSalesStore = create<SalesStore>((set, get) => ({
   getProductsByCollection: (collectionId) => {
     const state = get()
     return state.products.filter((prod) => prod.collectionId === collectionId)
+  },
+
+  // Channel management
+  addChannel: (channel) => {
+    const newChannel: SaleChannel = {
+      id: `channel-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: channel.name.trim(),
+      createdAt: new Date(),
+    }
+
+    set((state) => ({
+      channels: [...state.channels, newChannel],
+    }))
+
+    get().saveToServer({ immediate: true })
+  },
+
+  updateChannel: (id, updates) => {
+    set((state) => ({
+      channels: state.channels.map((channel) =>
+        channel.id === id ? { ...channel, ...updates } : channel
+      ),
+    }))
+
+    get().saveToServer({ immediate: true })
+  },
+
+  deleteChannel: (id) => {
+    set((state) => ({
+      channels: state.channels.filter((channel) => channel.id !== id),
+      sales: state.sales.map((sale) =>
+        sale.channelId === id ? { ...sale, channelId: undefined } : sale
+      ),
+    }))
+
+    get().saveToServer({ immediate: true })
   },
   
   // Subtask management

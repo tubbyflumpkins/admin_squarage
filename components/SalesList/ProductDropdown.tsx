@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import useSalesStore from '@/lib/salesStore'
 
@@ -52,7 +51,7 @@ export default function ProductDropdown({ value, onChange, compact = false, sele
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center justify-between gap-1 rounded font-medium hover:opacity-80 transition-all whitespace-nowrap",
+          "flex w-full items-center justify-center gap-1 rounded font-medium hover:opacity-80 transition-all whitespace-nowrap",
           compact ? "px-1.5 py-0.5 text-xs" : "px-2 py-1 text-sm",
           !selectedCollection && "bg-gray-100 text-gray-700",
           selectedCollection && (selectedColor === '#FFFFFF' || selectedCollection.color === '#FFFFFF') ? "text-black" : 
@@ -63,9 +62,8 @@ export default function ProductDropdown({ value, onChange, compact = false, sele
         }}
       >
         <span className="truncate font-bold">
-          {selectedProduct ? selectedProduct.name : "Select..."}
+          {selectedProduct ? selectedProduct.name : "Select"}
         </span>
-        <ChevronDown className={compact ? "w-3 h-3" : "w-4 h-4"} />
       </button>
 
       {isOpen && (

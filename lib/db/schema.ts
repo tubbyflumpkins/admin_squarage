@@ -71,6 +71,13 @@ export const products = pgTable('products', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// Sales channel options table
+export const saleChannels = pgTable('sale_channels', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // Sales table
 export const sales = pgTable('sales', {
   id: varchar('id', { length: 255 }).primaryKey(),
@@ -80,6 +87,7 @@ export const sales = pgTable('sales', {
   selectedColor: varchar('selected_color', { length: 7 }), // Selected color from collection's available colors
   placementDate: timestamp('placement_date').notNull(),
   deliveryMethod: varchar('delivery_method', { length: 20 }).notNull(), // 'shipping' or 'local'
+  channelId: varchar('channel_id', { length: 255 }).references(() => saleChannels.id, { onDelete: 'set null' }),
   status: varchar('status', { length: 20 }).notNull(), // 'not_started', 'in_progress', 'fulfilled', 'dead'
   notes: text('notes'),
   createdAt: timestamp('created_at').notNull(),
@@ -231,11 +239,19 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   sales: many(sales),
 }))
 
+export const saleChannelsRelations = relations(saleChannels, ({ many }) => ({
+  sales: many(sales),
+}))
+
 // Sales relations
 export const salesRelations = relations(sales, ({ one, many }) => ({
   product: one(products, {
     fields: [sales.productId],
     references: [products.id],
+  }),
+  channel: one(saleChannels, {
+    fields: [sales.channelId],
+    references: [saleChannels.id],
   }),
   subtasks: many(saleSubtasks),
 }))
@@ -306,6 +322,8 @@ export type Product = typeof products.$inferSelect
 export type NewProduct = typeof products.$inferInsert
 export type Sale = typeof sales.$inferSelect
 export type NewSale = typeof sales.$inferInsert
+export type SaleChannel = typeof saleChannels.$inferSelect
+export type NewSaleChannel = typeof saleChannels.$inferInsert
 export type SaleSubtask = typeof saleSubtasks.$inferSelect
 export type NewSaleSubtask = typeof saleSubtasks.$inferInsert
 export type CalendarType = typeof calendarTypes.$inferSelect
