@@ -413,16 +413,18 @@ export default function SalesAnalysis() {
       .sort((a, b) => b.revenue - a.revenue)
   }, [filteredSales, products, channels, hasLoadedFromServer])
 
+  type ChannelTooltipPayload = {
+    name: string
+    revenueCents: number
+    revenue: number
+    salesCount: number
+  }
+
   const renderRevenueTooltip = useCallback(
-    (tooltip: TooltipProps<number, string>) => {
+    (tooltip: { active?: boolean; payload?: { payload?: ChannelTooltipPayload }[] }) => {
       const { active, payload } = tooltip
       if (!active || !payload || payload.length === 0) return null
-      const dataPoint = payload[0]?.payload as {
-        name: string
-        revenueCents: number
-        revenue: number
-        salesCount: number
-      }
+      const dataPoint = payload[0]?.payload as ChannelTooltipPayload
 
       return (
         <div className="rounded-xl border border-white/10 bg-slate-900/90 px-4 py-3 text-white shadow-xl backdrop-blur-sm">
