@@ -455,7 +455,8 @@ export default function SalesAnalysis() {
     }: PieLabelRenderProps) => {
       if (typeof cx !== 'number' || typeof cy !== 'number') return null
 
-      const radius = outerRadius + 18
+      const safeOuter = typeof outerRadius === 'number' ? outerRadius : 0
+      const radius = safeOuter + 18
       const x = cx + radius * Math.cos(-midAngle * RADIAN)
       const y = cy + radius * Math.sin(-midAngle * RADIAN)
       const textAnchor = x > cx ? 'start' : 'end'
