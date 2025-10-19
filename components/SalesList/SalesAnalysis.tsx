@@ -14,6 +14,7 @@ import {
   Cell,
   Legend,
   type TooltipProps,
+  type PieLabelRenderProps,
 } from 'recharts'
 import {
   addDays,
@@ -263,6 +264,8 @@ const PIE_COLORS = [
   '#0284c7',
 ]
 
+const RADIAN = Math.PI / 180
+
 export default function SalesAnalysis() {
   const {
     sales,
@@ -410,7 +413,7 @@ export default function SalesAnalysis() {
       .sort((a, b) => b.revenue - a.revenue)
   }, [filteredSales, products, channels, hasLoadedFromServer])
 
-  const renderChannelTooltip = useCallback(
+  const renderRevenueTooltip = useCallback(
     ({ active, payload }: TooltipProps<number, string>) => {
       if (!active || !payload || payload.length === 0) return null
       const dataPoint = payload[0].payload as {
@@ -432,6 +435,117 @@ export default function SalesAnalysis() {
           </div>
           <div className="mt-2 text-xs text-white/70">Sales</div>
           <div className="text-sm font-semibold">{dataPoint.salesCount}</div>
+        </div>
+      )
+    },
+    []
+  )
+
+  const renderRevenueLabel = useCallback(
+    ({
+      cx,
+      cy,
+      midAngle = 0,
+      innerRadius = 0,
+      outerRadius = 0,
+      payload,
+    }: PieLabelRenderProps) => {
+      if (typeof cx !== 'number' || typeof cy !== 'number') return null
+
+      const radius = outerRadius + 18
+      const x = cx + radius * Math.cos(-midAngle * RADIAN)
+      const y = cy + radius * Math.sin(-midAngle * RADIAN)
+      const textAnchor = x > cx ? 'start' : 'end'
+
+      const channelName = (payload as { name?: string })?.name ?? ''
+      const revenueCents = (payload as { revenueCents?: number }).revenueCents
+
+      if (!channelName || typeof revenueCents !== 'number') return null
+
+      return (
+        <text
+          x={x}
+          y={y}
+          fill="#0f172a"
+          textAnchor={textAnchor}
+          dominantBaseline="central"
+          className="text-xs"
+        >
+          <tspan x={x} dy="-0.35em" fontWeight="600">
+            {channelName}
+          </tspan>
+          <tspan x={x} dy="1.2em" fill="rgba(15,23,42,0.7)">
+            {formatCurrency(revenueCents)}
+          </tspan>
+        </text>
+      )
+    },
+    []
+  )
+
+  const renderSalesLabel = useCallback(
+    ({
+      cx,
+      cy,
+      midAngle = 0,
+      innerRadius = 0,
+      outerRadius = 0,
+      payload,
+    }: PieLabelRenderProps) => {
+      if (typeof cx !== 'number' || typeof cy !== 'number') return null
+
+      const radius = outerRadius + 18
+      const x = cx + radius * Math.cos(-midAngle * RADIAN)
+      const y = cy + radius * Math.sin(-midAngle * RADIAN)
+      const textAnchor = x > cx ? 'start' : 'end'
+
+      const channelName = (payload as { name?: string })?.name ?? ''
+      const salesCount = (payload as { salesCount?: number }).salesCount
+
+      if (!channelName || typeof salesCount !== 'number') return null
+
+      return (
+        <text
+          x={x}
+          y={y}
+          fill="#0f172a"
+          textAnchor={textAnchor}
+          dominantBaseline="central"
+          className="text-xs"
+        >
+          <tspan x={x} dy="-0.35em" fontWeight="600">
+            {channelName}
+          </tspan>
+          <tspan x={x} dy="1.2em" fill="rgba(15,23,42,0.7)">
+            {salesCount} sale{salesCount === 1 ? '' : 's'}
+          </tspan>
+        </text>
+      )
+    },
+    []
+  )
+
+  const renderCountTooltip = useCallback(
+    ({ active, payload }: TooltipProps<number, string>) => {
+      if (!active || !payload || payload.length === 0) return null
+      const dataPoint = payload[0].payload as {
+        name: string
+        salesCount: number
+        revenueCents: number
+      }
+
+      return (
+        <div className="rounded-xl border border-white/10 bg-slate-900/90 px-4 py-3 text-white shadow-xl backdrop-blur-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-white/70">
+            Channel
+          </div>
+          <div className="text-sm font-semibold">{dataPoint.name}</div>
+          <div className="mt-2 text-xs text-white/70">Sales</div>
+          <div className="text-sm font-semibold">{dataPoint.salesCount}</div>
+          <div className="mt-2 text-xs text-white/70">Revenue</div>
+          <div className="text-sm font-semibold">
+            {formatCurrency(dataPoint.revenueCents)}
+          </div>
         </div>
       )
     },
@@ -614,7 +728,7 @@ export default function SalesAnalysis() {
         </div>
       </div>
 
-      <div className="flex justify-start">
+      <div className="flex flex-col md:flex-row gap-6">
         <div className="w-full md:w-1/2">
           <div className="backdrop-blur-md bg-white/70 border border-white/70 rounded-2xl shadow-2xl p-6">
             <h3 className="text-xl font-semibold text-squarage-black">Revenue by Channel</h3>
@@ -638,6 +752,8 @@ export default function SalesAnalysis() {
                       outerRadius="80%"
                       paddingAngle={2}
                       stroke="rgba(15,23,42,0.15)"
+                      labelLine={false}
+                      label={renderRevenueLabel}
                     >
                       {revenueByChannel.map((entry, index) => (
                         <Cell
@@ -647,7 +763,53 @@ export default function SalesAnalysis() {
                         />
                       ))}
                     </Pie>
-                    <Tooltip content={renderChannelTooltip} />
+                    <Tooltip content={renderRevenueTooltip} />
+                    <Legend
+                      verticalAlign="bottom"
+                      iconType="circle"
+                      wrapperStyle={{ paddingTop: 12 }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="w-full md:w-1/2">
+          <div className="backdrop-blur-md bg-white/70 border border-white/70 rounded-2xl shadow-2xl p-6">
+            <h3 className="text-xl font-semibold text-squarage-black">Sales Volume by Channel</h3>
+            <div className="h-72 mt-4">
+              {isBusy ? (
+                <div className="h-full flex items-center justify-center text-squarage-black/70">
+                  Loading channel data...
+                </div>
+              ) : revenueByChannel.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-squarage-black/60 text-sm">
+                  No channel sales for the selected range.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={revenueByChannel}
+                      dataKey="salesCount"
+                      nameKey="name"
+                      innerRadius="55%"
+                      outerRadius="80%"
+                      paddingAngle={2}
+                      stroke="rgba(15,23,42,0.15)"
+                      labelLine={false}
+                      label={renderSalesLabel}
+                    >
+                      {revenueByChannel.map((entry, index) => (
+                        <Cell
+                          key={entry.channelId}
+                          fill={PIE_COLORS[index % PIE_COLORS.length]}
+                          stroke="rgba(255,255,255,0.6)"
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip content={renderCountTooltip} />
                     <Legend
                       verticalAlign="bottom"
                       iconType="circle"
