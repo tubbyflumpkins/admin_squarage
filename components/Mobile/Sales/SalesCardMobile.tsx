@@ -40,19 +40,21 @@ export default function SalesCardMobile({
   const [showDeliveryMenu, setShowDeliveryMenu] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showStatusMenu, setShowStatusMenu] = useState(false)
+  const [showChannelMenu, setShowChannelMenu] = useState(false)
   const [hasSelectedStatus, setHasSelectedStatus] = useState(!isNew)
-  const { products, collections, updateSale, addSubtask, toggleSubtask, updateNotes } = useSalesStore()
+  const { products, collections, channels, updateSale, addSubtask, toggleSubtask, updateNotes } = useSalesStore()
   
   const product = products.find(p => p.id === sale.productId)
   const collection = product ? collections.find(c => c.id === product.collectionId) : null
+  const channelOption = channels.find(channel => channel.id === sale.channelId)
 
   // Track if any dropdown is open
   useEffect(() => {
-    const isAnyDropdownOpen = showMenu || showStatusMenu || showProductMenu || showDeliveryMenu || showDatePicker
+    const isAnyDropdownOpen = showMenu || showStatusMenu || showProductMenu || showDeliveryMenu || showDatePicker || showChannelMenu
     if (onDropdownStateChange) {
       onDropdownStateChange(isAnyDropdownOpen)
     }
-  }, [showMenu, showStatusMenu, showProductMenu, showDeliveryMenu, showDatePicker, onDropdownStateChange])
+  }, [showMenu, showStatusMenu, showProductMenu, showDeliveryMenu, showDatePicker, showChannelMenu, onDropdownStateChange])
 
   const statusColors = {
     not_started: 'bg-gray-500',
@@ -511,7 +513,82 @@ export default function SalesCardMobile({
               )}
             </div>
           )}
-          
+
+          {/* Channel */}
+          {(channelOption || (isEditable && channels.length > 0) || isNew) && (
+            <div className="relative inline-block">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (isEditable) {
+                    setShowChannelMenu(!showChannelMenu)
+                    setShowProductMenu(false)
+                    setShowDeliveryMenu(false)
+                    setShowStatusMenu(false)
+                    setShowDatePicker(false)
+                  }
+                }}
+                className={cn(
+                  'px-1.5 py-0.5 rounded text-xs font-medium border border-gray-300 bg-white text-gray-700',
+                  isEditable && 'cursor-pointer ring-1 ring-white/50'
+                )}
+              >
+                {channelOption?.name || 'Channel'}
+              </button>
+
+              {showChannelMenu && isEditable && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowChannelMenu(false)
+                    }}
+                  />
+                  <div className="absolute left-0 top-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 min-w-[150px] max-h-48 overflow-y-auto">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (isNew && onUpdateNewSale) {
+                          onUpdateNewSale({ channelId: undefined })
+                        } else {
+                          updateSale(sale.id, { channelId: undefined })
+                        }
+                        setShowChannelMenu(false)
+                      }}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-2 hover:bg-gray-50 w-full text-left text-sm',
+                        !sale.channelId && 'bg-gray-100'
+                      )}
+                    >
+                      None
+                    </button>
+                    {channels.map(channel => (
+                      <button
+                        key={channel.id}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (isNew && onUpdateNewSale) {
+                            onUpdateNewSale({ channelId: channel.id })
+                          } else {
+                            updateSale(sale.id, { channelId: channel.id })
+                          }
+                          setShowChannelMenu(false)
+                        }}
+                        className={cn(
+                          'flex items-center gap-2 px-3 py-2 hover:bg-gray-50 w-full text-left text-sm',
+                          sale.channelId === channel.id && 'bg-gray-100'
+                        )}
+                      >
+                        {channel.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Revenue */}
           <span className="px-1.5 py-0.5 bg-green-600 rounded text-xs font-medium text-white">
             ${sale.revenue ? (sale.revenue / 100).toFixed(0) : '0'}

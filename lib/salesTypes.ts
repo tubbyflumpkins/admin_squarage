@@ -21,6 +21,12 @@ export interface Collection {
   availableColors?: string[] // Colors available for products in this collection
 }
 
+export interface SaleChannel {
+  id: string
+  name: string
+  createdAt: Date
+}
+
 export interface Sale {
   id: string
   name: string // Customer/order name (renamed from 'order')
@@ -29,6 +35,7 @@ export interface Sale {
   selectedColor?: string // Selected color from collection's available colors
   placementDate: Date
   deliveryMethod: DeliveryMethod
+  channelId?: string // Reference to channel option
   status: SaleStatus
   subtasks?: SaleSubtask[]
   notes?: string
@@ -45,4 +52,5 @@ export interface SalesFilters {
   sortBy: SortBy
   productId?: string
   selectedColor?: string
+  channelId?: string
 }

@@ -63,7 +63,7 @@ export default function SalesFilterDropdown({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "w-full px-2 py-1.5 flex items-center justify-center gap-1 hover:text-squarage-green transition-colors",
-          "text-xs font-medium uppercase tracking-wider whitespace-nowrap overflow-visible",
+          "text-xs font-medium whitespace-nowrap overflow-visible",
           (selectedValue || isOpen) && type === 'product' && selectedOption?.color !== '#FFFFFF' && "text-white hover:text-white",
           (selectedValue || isOpen) && type === 'product' && selectedOption?.color === '#FFFFFF' && "text-black hover:text-black",
           selectedCollection && selectedCollection.color !== '#FFFFFF' && "text-white hover:text-white",

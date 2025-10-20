@@ -1,5 +1,16 @@
 import { create } from 'zustand'
-import { Sale, SalesFilters, SortBy, SaleStatus, FilterBy, SaleSubtask, DeliveryMethod, Collection, Product } from './salesTypes'
+import {
+  Sale,
+  SalesFilters,
+  SortBy,
+  SaleStatus,
+  FilterBy,
+  SaleSubtask,
+  DeliveryMethod,
+  Collection,
+  Product,
+  SaleChannel,
+} from './salesTypes'
 import { loadingCoordinator } from './loadingCoordinator'
 
 interface SalesStore {
@@ -7,6 +18,7 @@ interface SalesStore {
   sales: Sale[]
   collections: Collection[]
   products: Product[]
+  channels: SaleChannel[]
   filters: SalesFilters
   
   // Loading state
@@ -15,7 +27,7 @@ interface SalesStore {
   
   // Actions
   loadFromServer: () => Promise<void>
-  saveToServer: () => Promise<void>
+  saveToServer: (options?: { immediate?: boolean }) => Promise<void>
   
   addSale: (sale: Omit<Sale, 'id' | 'createdAt' | 'updatedAt'>) => void
   updateSale: (id: string, sale: Partial<Sale>) => void
@@ -37,7 +49,12 @@ interface SalesStore {
   updateProduct: (id: string, product: Partial<Product>) => void
   deleteProduct: (id: string) => void
   getProductsByCollection: (collectionId: string) => Product[]
-  
+
+  // Attribute management
+  addChannel: (channel: Omit<SaleChannel, 'id' | 'createdAt'>) => void
+  updateChannel: (id: string, channel: Partial<SaleChannel>) => void
+  deleteChannel: (id: string) => void
+
   // Subtask management
   addSubtask: (saleId: string, text: string) => void
   updateSubtask: (saleId: string, subtaskId: string, updates: Partial<SaleSubtask>) => void
@@ -57,12 +74,14 @@ const useSalesStore = create<SalesStore>((set, get) => ({
   sales: [],
   collections: [],
   products: [],
+  channels: [],
   filters: {
     deliveryMethod: undefined,
     status: 'all' as FilterBy,
     sortBy: 'placementDate' as SortBy,
     productId: undefined,
     selectedColor: undefined,
+    channelId: undefined,
   },
   
   // Loading state
@@ -72,67 +91,88 @@ const useSalesStore = create<SalesStore>((set, get) => ({
   // Load data from server with coordination to prevent multiple simultaneous loads
   loadFromServer: async () => {
     const state = get()
-    
+
     // Use the loading coordinator to prevent multiple simultaneous requests
     return loadingCoordinator.coordinatedLoad(
       'sales-data',
       async () => {
         set({ isLoading: true })
-        
+
         try {
           console.log('Loading sales data from server...')
           const response = await fetch('/api/sales/neon', {
-            credentials: 'include' // Ensure cookies are sent with request
+            credentials: 'include', // Ensure cookies are sent with request
           })
-          
+
           if (!response.ok) {
             console.error(`Sales API returned ${response.status}: ${response.statusText}`)
-            
+
             // Handle authentication errors specifically
             if (response.status === 401) {
               console.error('Authentication error - redirecting to login')
-              // In a browser environment, redirect to login
               if (typeof window !== 'undefined') {
                 window.location.href = '/login'
               }
               throw new Error('Authentication required')
             }
-            
+
             const errorText = await response.text()
             console.error('Error response:', errorText)
             throw new Error(`Failed to load sales data: ${response.status}`)
           }
-          
+
           const data = await response.json()
           console.log('Sales data loaded from server:', {
-            salesCount: data.sales?.length || 0
+            salesCount: data.sales?.length || 0,
+            collectionsCount: data.collections?.length || 0,
+            productsCount: data.products?.length || 0,
+            channelsCount: data.channels?.length || 0,
           })
-          
+
+          const normalizedChannels: SaleChannel[] = (data.channels || []).map(
+            (channel: any) => ({
+              ...channel,
+              createdAt: channel.createdAt ? new Date(channel.createdAt) : new Date(),
+            })
+          )
+          const existingChannels = get().channels || []
+          const pendingChannels = existingChannels.filter(
+            channel => !normalizedChannels.some(existing => existing.id === channel.id)
+          )
+
           // Always update state with received data (even if some parts are empty)
           set({
             sales: data.sales || [],
             collections: data.collections || [],
             products: data.products || [],
+            channels: [...normalizedChannels, ...pendingChannels],
             isLoading: false,
-            hasLoadedFromServer: true
+            hasLoadedFromServer: true,
           })
-          
+
           console.log('Sales store updated with:', {
             salesCount: data.sales?.length || 0,
             collectionsCount: data.collections?.length || 0,
-            productsCount: data.products?.length || 0
+            productsCount: data.products?.length || 0,
+            channelsCount: normalizedChannels.length,
           })
-          
+
+          if (pendingChannels.length > 0) {
+            console.log('[SalesStore] Persisting pending channels after initial load...', {
+              pendingChannels: pendingChannels.length,
+            })
+            void get().saveToServer({ immediate: true })
+          }
+
           return data
         } catch (error) {
           console.error('Error loading sales data from server:', error)
-          // Try to provide helpful error messages
           if (error instanceof TypeError && error.message.includes('fetch')) {
             console.error('Network error - could not connect to Sales API')
           }
-          set({ 
+          set({
             isLoading: false,
-            hasLoadedFromServer: true // Mark as loaded even on error to prevent infinite retries
+            hasLoadedFromServer: true, // Mark as loaded even on error to prevent infinite retries
           })
           throw error
         }
@@ -142,40 +182,36 @@ const useSalesStore = create<SalesStore>((set, get) => ({
   },
   
   // Save data to server (debounced)
-  saveToServer: async () => {
+  saveToServer: async (options?: { immediate?: boolean }) => {
+    const immediate = options?.immediate ?? false
     const state = get()
-    
+
     // Don't save if we haven't loaded from server yet
     if (!state.hasLoadedFromServer) {
       console.log('Skipping save - sales data not loaded from server yet')
       return
     }
-    
+
     // Don't save if currently loading
     if (state.isLoading) {
       console.log('Skipping save - currently loading sales data')
       return
     }
-    
+
     // Safety check: Don't save empty state if we supposedly have loaded data
     if (state.hasLoadedFromServer && state.sales.length === 0) {
-      // Check if this is a legitimate empty state or a potential data loss
       console.warn('Warning: Attempting to save empty sales state')
     }
-    
-    // Clear existing timer
-    if (saveDebounceTimer) {
-      clearTimeout(saveDebounceTimer)
-    }
-    
-    // Debounce the save (5 second delay to batch multiple changes)
-    saveDebounceTimer = setTimeout(async () => {
+
+    const performSave = async () => {
+      const latestState = get()
       try {
         console.log('[SalesStore] Saving data to server after user action...', {
-          sales: state.sales.length,
-          collections: state.collections.length,
-          products: state.products.length,
-          timestamp: new Date().toISOString()
+          sales: latestState.sales.length,
+          collections: latestState.collections.length,
+          products: latestState.products.length,
+          channels: latestState.channels.length,
+          timestamp: new Date().toISOString(),
         })
         const response = await fetch('/api/sales/neon', {
           method: 'POST',
@@ -184,28 +220,35 @@ const useSalesStore = create<SalesStore>((set, get) => ({
           },
           credentials: 'include', // Ensure cookies are sent with request
           body: JSON.stringify({
-            sales: state.sales,
-            collections: state.collections,
-            products: state.products
+            sales: latestState.sales,
+            collections: latestState.collections,
+            products: latestState.products,
+            channels: latestState.channels,
           }),
         })
-        
+
         if (!response.ok) {
-          // Handle authentication errors specifically
           if (response.status === 401) {
             console.error('Authentication error while saving sales - redirecting to login')
-            // In a browser environment, redirect to login
             if (typeof window !== 'undefined') {
               window.location.href = '/login'
             }
             return
           }
-          
-          const errorData = await response.json()
-          if (errorData.blocked) {
+
+          let errorData: any = null
+          try {
+            errorData = await response.json()
+          } catch {
+            // ignore parse failure
+          }
+
+          if (errorData?.blocked) {
             console.error('CRITICAL: Server blocked empty state save to prevent data loss')
-          } else {
+          } else if (errorData) {
             console.error('Failed to save sales data:', errorData)
+          } else {
+            console.error('Failed to save sales data: unknown error')
           }
         } else {
           console.log('Sales data saved successfully')
@@ -213,7 +256,21 @@ const useSalesStore = create<SalesStore>((set, get) => ({
       } catch (error) {
         console.error('Error saving sales data:', error)
       }
-    }, SAVE_DEBOUNCE_MS)
+    }
+
+    if (immediate) {
+      if (saveDebounceTimer) {
+        clearTimeout(saveDebounceTimer)
+        saveDebounceTimer = null
+      }
+      await performSave()
+      return
+    }
+
+    if (saveDebounceTimer) {
+      clearTimeout(saveDebounceTimer)
+    }
+    saveDebounceTimer = setTimeout(performSave, SAVE_DEBOUNCE_MS)
   },
   
   // Add a new sale
@@ -310,6 +367,11 @@ const useSalesStore = create<SalesStore>((set, get) => ({
     // Apply color filter
     if (state.filters.selectedColor) {
       filtered = filtered.filter((s) => s.selectedColor === state.filters.selectedColor)
+    }
+
+    // Apply channel filter
+    if (state.filters.channelId) {
+      filtered = filtered.filter((s) => s.channelId === state.filters.channelId)
     }
     
     // Apply status filter
@@ -455,6 +517,42 @@ const useSalesStore = create<SalesStore>((set, get) => ({
   getProductsByCollection: (collectionId) => {
     const state = get()
     return state.products.filter((prod) => prod.collectionId === collectionId)
+  },
+
+  // Channel management
+  addChannel: (channel) => {
+    const newChannel: SaleChannel = {
+      ...channel,
+      id: `channel-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date(),
+    }
+
+    set((state) => ({
+      channels: [...state.channels, newChannel],
+    }))
+
+    get().saveToServer()
+  },
+
+  updateChannel: (id, updates) => {
+    set((state) => ({
+      channels: state.channels.map((channel) =>
+        channel.id === id ? { ...channel, ...updates } : channel
+      ),
+    }))
+
+    get().saveToServer()
+  },
+
+  deleteChannel: (id) => {
+    set((state) => ({
+      channels: state.channels.filter((channel) => channel.id !== id),
+      sales: state.sales.map((sale) =>
+        sale.channelId === id ? { ...sale, channelId: undefined } : sale
+      ),
+    }))
+
+    get().saveToServer()
   },
   
   // Subtask management

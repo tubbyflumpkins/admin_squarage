@@ -11,6 +11,7 @@ import DeliveryMethodDropdown from './DeliveryMethodDropdown'
 import ProductDropdown from './ProductDropdown'
 import ColorSelector from './ColorSelector'
 import SaleSubtaskList from './SaleSubtaskList'
+import ChannelDropdown from './ChannelDropdown'
 import type { Sale, SaleStatus } from '@/lib/salesTypes'
 import { cn, hexToPastel } from '@/lib/utils'
 
@@ -37,7 +38,7 @@ export default function SalesItem({ sale, onEdit, onDelete, isGlassView = false 
   const products = useSalesStore(state => state.products)
 
   const {
-    attributes,
+    attributes: sortableAttributes,
     listeners,
     setNodeRef,
     transform,
@@ -196,7 +197,7 @@ export default function SalesItem({ sale, onEdit, onDelete, isGlassView = false 
           currentStatus === 'dead' && 'bg-red-200/80'
         )}
       >
-        <div className="grid grid-cols-[14px_110px_1fr_100px_60px_80px_120px_100px_30px_32px] text-sm relative">
+        <div className="grid grid-cols-[14px_110px_1fr_100px_60px_80px_120px_100px_105px_30px_32px] text-sm relative">
           {/* Strike-through line for dead sales only */}
           {currentStatus === 'dead' && (
             <div 
@@ -210,7 +211,7 @@ export default function SalesItem({ sale, onEdit, onDelete, isGlassView = false 
           {/* Drag handle */}
           <div className="py-1 flex items-center justify-center">
             <button
-              {...attributes}
+              {...sortableAttributes}
               {...listeners}
               className="cursor-grab hover:text-squarage-green transition-colors"
               onClick={(e) => e.stopPropagation()}
@@ -259,7 +260,7 @@ export default function SalesItem({ sale, onEdit, onDelete, isGlassView = false 
           </div>
 
           {/* Product */}
-          <div className="px-2 py-1 flex items-center border-l border-brown-light/20">
+          <div className="px-2 py-1 flex items-center justify-center border-l border-brown-light/20">
             <ProductDropdown
               value={sale.productId}
               onChange={(productId) => {
@@ -359,6 +360,16 @@ export default function SalesItem({ sale, onEdit, onDelete, isGlassView = false 
               value={sale.deliveryMethod}
               onChange={handleDeliveryMethodChange}
               compact
+            />
+          </div>
+
+          {/* Channel */}
+          <div className="px-2 py-1 flex items-center justify-center border-l border-brown-light/20">
+            <ChannelDropdown
+              value={sale.channelId}
+              onChange={(channelId) => updateSale(sale.id, { channelId })}
+              compact
+              placeholder="Channel"
             />
           </div>
 
