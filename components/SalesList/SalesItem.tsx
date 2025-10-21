@@ -367,7 +367,7 @@ export default function SalesItem({ sale, onEdit, onDelete, isGlassView = false 
           <div className="px-2 py-1 flex items-center justify-center border-l border-brown-light/20">
             <ChannelDropdown
               value={sale.channelId}
-              onChange={(channelId) => updateSale(sale.id, { channelId })}
+              onChange={(channelId) => updateSale(sale.id, { channelId }, { immediate: true })}
               compact
               placeholder="Channel"
             />

@@ -30,7 +30,7 @@ interface SalesStore {
   saveToServer: (options?: { immediate?: boolean }) => Promise<void>
   
   addSale: (sale: Omit<Sale, 'id' | 'createdAt' | 'updatedAt'>) => void
-  updateSale: (id: string, sale: Partial<Sale>) => void
+  updateSale: (id: string, sale: Partial<Sale>, options?: { immediate?: boolean }) => void
   deleteSale: (id: string) => void
   reorderSales: (activeId: string, overId: string) => void
   setFilter: (filter: Partial<SalesFilters>) => void
@@ -295,7 +295,7 @@ const useSalesStore = create<SalesStore>((set, get) => ({
   },
   
   // Update a sale
-  updateSale: (id, updates) => {
+  updateSale: (id, updates, options) => {
     set((state) => ({
       sales: state.sales.map((sale) =>
         sale.id === id
@@ -303,9 +303,9 @@ const useSalesStore = create<SalesStore>((set, get) => ({
           : sale
       ),
     }))
-    
-    // Auto-save
-    get().saveToServer()
+
+    // Auto-save (immediate for dropdown selections, debounced for text edits)
+    get().saveToServer(options)
   },
   
   // Delete a sale
