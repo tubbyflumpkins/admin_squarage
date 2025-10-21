@@ -535,7 +535,8 @@ const useSalesStore = create<SalesStore>((set, get) => ({
       channels: [...state.channels, newChannel],
     }))
 
-    get().saveToServer()
+    // Save immediately for settings changes
+    get().saveToServer({ immediate: true })
   },
 
   updateChannel: (id, updates) => {
@@ -545,7 +546,8 @@ const useSalesStore = create<SalesStore>((set, get) => ({
       ),
     }))
 
-    get().saveToServer()
+    // Save immediately for settings changes
+    get().saveToServer({ immediate: true })
   },
 
   deleteChannel: (id) => {
@@ -556,7 +558,8 @@ const useSalesStore = create<SalesStore>((set, get) => ({
       ),
     }))
 
-    get().saveToServer()
+    // Save immediately for settings changes
+    get().saveToServer({ immediate: true })
   },
   
   // Subtask management
