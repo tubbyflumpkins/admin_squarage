@@ -25,6 +25,49 @@ async function fallbackToJsonFile() {
   }
 }
 
+const formatColorLabel = (value: string, providedName?: string) => {
+  if (providedName && providedName.trim().length > 0) {
+    return providedName.trim()
+  }
+  if (typeof value !== 'string') return 'Unknown'
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return 'Unknown'
+  return trimmed.startsWith('#') ? trimmed.toUpperCase() : trimmed
+}
+
+const normalizeAvailableColors = (
+  raw: unknown,
+  fallbackColor: string
+): NonNullable<StoreCollection['availableColors']> => {
+  const normalized: NonNullable<StoreCollection['availableColors']> = []
+  const seen = new Set<string>()
+
+  if (Array.isArray(raw)) {
+    raw.forEach(entry => {
+      if (typeof entry === 'string') {
+        const value = entry.trim()
+        if (!value || seen.has(value)) return
+        normalized.push({ value, name: formatColorLabel(value) })
+        seen.add(value)
+      } else if (entry && typeof entry === 'object') {
+        const value = typeof (entry as any).value === 'string' ? (entry as any).value.trim() : ''
+        if (!value || seen.has(value)) return
+        const name =
+          typeof (entry as any).name === 'string' ? (entry as any).name : undefined
+        normalized.push({ value, name: formatColorLabel(value, name) })
+        seen.add(value)
+      }
+    })
+  }
+
+  const fallback = typeof fallbackColor === 'string' ? fallbackColor.trim() : ''
+  if (fallback && !seen.has(fallback)) {
+    normalized.unshift({ value: fallback, name: formatColorLabel(fallback) })
+  }
+
+  return normalized
+}
+
 export async function GET() {
   // Check authentication
   const session = await getServerSession(authOptions)
@@ -46,7 +89,16 @@ export async function GET() {
     if (!isDatabaseConfigured() || !db) {
       console.log('Database not configured, falling back to JSON file')
       const data = await fallbackToJsonFile()
-      return NextResponse.json(data)
+      const normalized = {
+        ...data,
+        collections: Array.isArray(data.collections)
+          ? data.collections.map((col: any) => ({
+              ...col,
+              availableColors: normalizeAvailableColors(col.availableColors, col.color),
+            }))
+          : [],
+      }
+      return NextResponse.json(normalized)
     }
 
     console.log('Database is configured, fetching sales data...')
@@ -95,7 +147,7 @@ export async function GET() {
       id: col.id,
       name: col.name,
       color: col.color,
-      availableColors: (col.availableColors as string[]) || [col.color]
+      availableColors: normalizeAvailableColors(col.availableColors, col.color)
     }))
     
     // Transform products
@@ -131,7 +183,16 @@ export async function GET() {
     console.error('Error fetching sales data from database:', error)
     // Fallback to JSON file on error
     const data = await fallbackToJsonFile()
-    return NextResponse.json(data)
+    const normalized = {
+      ...data,
+      collections: Array.isArray(data.collections)
+        ? data.collections.map((col: any) => ({
+            ...col,
+            availableColors: normalizeAvailableColors(col.availableColors, col.color),
+          }))
+        : [],
+    }
+    return NextResponse.json(normalized)
   }
 }
 
@@ -406,7 +467,7 @@ export async function POST(request: Request) {
           id: collection.id,
           name: collection.name,
           color: collection.color,
-          availableColors: collection.availableColors || [collection.color],
+          availableColors: normalizeAvailableColors(collection.availableColors, collection.color),
           createdAt: new Date()
         }
         

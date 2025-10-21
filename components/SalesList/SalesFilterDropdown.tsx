@@ -84,7 +84,7 @@ export default function SalesFilterDropdown({
         )}>
           {type === 'product' && selectedCollection ? selectedCollection.name :
            type === 'product' && selectedOption ? selectedOption.name : 
-           type === 'color' && selectedOption ? 'Color' : 
+           type === 'color' && selectedOption ? selectedOption.name : 
            label}
         </span>
       </button>
@@ -218,7 +218,7 @@ export default function SalesFilterDropdown({
                     backgroundColor: option.color,
                     backdropFilter: 'blur(4px)'
                   }}
-                  title={option.color}
+                  title={option.name || option.color}
                 />
               ))}
             </div>

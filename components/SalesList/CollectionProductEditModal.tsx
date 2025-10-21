@@ -37,6 +37,7 @@ export default function CollectionProductEditModal({
     deleteCollection,
     addCollectionColor,
     removeCollectionColor,
+    updateCollectionColor,
     addProduct,
     updateProduct,
     deleteProduct,
@@ -460,26 +461,47 @@ export default function CollectionProductEditModal({
                           <div>
                             <h4 className="font-medium text-sm text-gray-700 mb-2">Collection Colors</h4>
                             <div className="bg-white p-3 rounded border border-gray-200">
-                              <div className="flex flex-wrap gap-2 mb-3">
-                                {(collection.availableColors || [collection.color]).map(color => (
-                                  <div key={color} className="relative group">
+                              <div className="space-y-3 mb-4">
+                                {(collection.availableColors || []).map(colorEntry => {
+                                  const colorValue = colorEntry.value
+                                  const colorName = colorEntry.name
+                                  const isDefaultColor = colorValue === collection.color
+
+                                  return (
                                     <div
-                                      className="w-8 h-8 rounded border-2 border-gray-300"
-                                      style={{ backgroundColor: color }}
-                                      title={color}
-                                    />
-                                    {/* Don't allow removing the default collection color */}
-                                    {color !== collection.color && (
-                                      <button
-                                        onClick={() => removeCollectionColor(collection.id, color)}
-                                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full hidden group-hover:flex items-center justify-center hover:bg-red-600"
-                                        title="Remove color"
-                                      >
-                                        <X size={10} />
-                                      </button>
-                                    )}
-                                  </div>
-                                ))}
+                                      key={colorValue}
+                                      className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 bg-gray-50/60"
+                                    >
+                                      <div
+                                        className="w-8 h-8 rounded border-2 border-white shadow-sm flex-shrink-0"
+                                        style={{ backgroundColor: colorValue }}
+                                        title={colorName}
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <input
+                                          type="text"
+                                          value={colorName}
+                                          onChange={event =>
+                                            updateCollectionColor(collection.id, colorValue, {
+                                              name: event.target.value,
+                                            })
+                                          }
+                                          placeholder="Color name"
+                                          className="w-full border border-gray-200 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-squarage-green/60 focus:border-squarage-green/60 bg-white"
+                                        />
+                                      </div>
+                                      {!isDefaultColor && (
+                                        <button
+                                          onClick={() => removeCollectionColor(collection.id, colorValue)}
+                                          className="text-gray-400 hover:text-red-600 transition-colors"
+                                          title="Remove color"
+                                        >
+                                          <X size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  )
+                                })}
                                 {/* Add new color button */}
                                 <button
                                   ref={(el) => {
@@ -498,8 +520,8 @@ export default function CollectionProductEditModal({
                                   onClose={() => setShowCollectionColorPicker(null)}
                                   onSelect={(color) => {
                                     // Check if color is already in the collection
-                                    const currentColors = collection.availableColors || [collection.color]
-                                    if (!currentColors.includes(color)) {
+                                    const currentColors = collection.availableColors || []
+                                    if (!currentColors.some(entry => entry.value === color)) {
                                       addCollectionColor(collection.id, color)
                                     }
                                     setShowCollectionColorPicker(null)

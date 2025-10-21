@@ -267,6 +267,7 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
               options={(() => {
                 // Get all unique colors from sales that have been used
                 const usedColors = new Set<string>()
+                const colorNameMap = new Map<string, string>()
                 sales.forEach(sale => {
                   if (sale.selectedColor) {
                     usedColors.add(sale.selectedColor)
@@ -275,17 +276,25 @@ export default function SalesListGrid({ isFullPage = false, isGlassView = false 
                 
                 // Also add all available colors from collections
                 collections.forEach(collection => {
-                  if (collection.availableColors) {
-                    collection.availableColors.forEach(color => usedColors.add(color))
-                  } else {
+                  if (collection.availableColors && collection.availableColors.length > 0) {
+                    collection.availableColors.forEach(entry => {
+                      usedColors.add(entry.value)
+                      if (!colorNameMap.has(entry.value)) {
+                        colorNameMap.set(entry.value, entry.name)
+                      }
+                    })
+                  } else if (collection.color) {
                     usedColors.add(collection.color)
+                    if (!colorNameMap.has(collection.color)) {
+                      colorNameMap.set(collection.color, collection.color)
+                    }
                   }
                 })
                 
                 return Array.from(usedColors).map(color => ({
                   id: color,
-                  name: '',
-                  color
+                  name: colorNameMap.get(color) || color,
+                  color,
                 }))
               })()}
               selectedValue={filters.selectedColor}

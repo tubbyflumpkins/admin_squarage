@@ -8,9 +8,12 @@ import {
   CartesianGrid,
   XAxis,
   YAxis,
+  Label,
   Tooltip,
   PieChart,
   Pie,
+  BarChart,
+  Bar,
   Cell,
   Legend,
   type PieLabelRenderProps,
@@ -48,6 +51,19 @@ type PresetOption = {
 }
 
 type Granularity = 'day' | 'week' | 'month'
+type ColorVolumePoint = {
+  color: string
+  label: string
+  salesCount: number
+  percentage: number
+}
+
+type CollectionColorVolume = {
+  collectionId: string
+  collectionName: string
+  data: ColorVolumePoint[]
+  totalSales: number
+}
 
 const PRESETS: PresetOption[] = [
   { id: 'all_time', label: 'All Time' },
@@ -264,11 +280,22 @@ const PIE_COLORS = [
 ]
 
 const RADIAN = Math.PI / 180
+const COLLECTION_NAMES_FOR_COLOR_VOLUME = ['Warped', 'Tiled']
+const formatColorLabel = (value: string, providedName?: string) => {
+  if (providedName && providedName.trim().length > 0) {
+    return providedName.trim()
+  }
+  if (typeof value !== 'string') return 'Unknown'
+  const trimmed = value.trim()
+  if (trimmed.length === 0) return 'Unknown'
+  return trimmed.startsWith('#') ? trimmed.toUpperCase() : trimmed
+}
 
 export default function SalesAnalysis() {
   const {
     sales,
     products,
+    collections,
     channels,
     isLoading,
     hasLoadedFromServer,
@@ -419,6 +446,95 @@ export default function SalesAnalysis() {
     salesCount: number
   }
 
+  const colorVolumeByCollection = useMemo<CollectionColorVolume[]>(() => {
+    if (!hasLoadedFromServer) return []
+
+    const productMap = new Map<string, Product>()
+    products.forEach(product => {
+      productMap.set(product.id, product)
+    })
+
+    const normalizedSales = filteredSales.filter(sale => sale.status !== 'dead')
+
+    return COLLECTION_NAMES_FOR_COLOR_VOLUME.map(targetName => {
+      const collection = collections.find(
+        candidate => candidate.name?.toLowerCase() === targetName.toLowerCase()
+      )
+      if (!collection) return null
+      if (collection.name.toLowerCase().includes('custom')) return null
+
+      const baseColors =
+        collection.availableColors && collection.availableColors.length > 0
+          ? collection.availableColors
+          : collection.color
+          ? [{ value: collection.color, name: collection.color }]
+          : []
+
+      const counts = new Map<string, number>()
+      const orderedColors: string[] = []
+      const colorNames = new Map<string, string>()
+
+      const registerColor = (value?: string, name?: string) => {
+        if (!value || value.trim().length === 0) return
+        const normalizedValue = value.trim()
+        if (!counts.has(normalizedValue)) {
+          counts.set(normalizedValue, 0)
+        }
+        if (!orderedColors.includes(normalizedValue)) {
+          orderedColors.push(normalizedValue)
+        }
+        if (name !== undefined) {
+          const formattedName = formatColorLabel(normalizedValue, name)
+          colorNames.set(normalizedValue, formattedName)
+        } else if (!colorNames.has(normalizedValue)) {
+          colorNames.set(normalizedValue, formatColorLabel(normalizedValue))
+        }
+      }
+
+      baseColors.forEach(entry => registerColor(entry.value, entry.name))
+
+      normalizedSales.forEach(sale => {
+        if (!sale.productId) return
+        const product = productMap.get(sale.productId)
+        if (!product || product.collectionId !== collection.id) return
+
+        let saleColor = sale.selectedColor?.trim()
+        if (!saleColor) {
+          saleColor = collection.color
+        }
+        if (!saleColor) return
+
+        registerColor(saleColor)
+
+        counts.set(saleColor, (counts.get(saleColor) ?? 0) + 1)
+      })
+
+      const totalSales = Array.from(counts.values()).reduce(
+        (sum, count) => sum + count,
+        0
+      )
+
+      const data: ColorVolumePoint[] = orderedColors.map(colorValue => {
+        const count = counts.get(colorValue) ?? 0
+        const label = colorNames.get(colorValue) ?? formatColorLabel(colorValue)
+
+        return {
+          color: colorValue,
+          label,
+          salesCount: count,
+          percentage: totalSales > 0 ? (count / totalSales) * 100 : 0,
+        }
+      })
+
+      return {
+        collectionId: collection.id,
+        collectionName: collection.name,
+        data,
+        totalSales,
+      }
+    }).filter((value): value is CollectionColorVolume => value !== null)
+  }, [collections, filteredSales, hasLoadedFromServer, products])
+
   const renderRevenueTooltip = useCallback(
     (tooltip: { active?: boolean; payload?: { payload?: ChannelTooltipPayload }[] }) => {
       const { active, payload } = tooltip
@@ -437,6 +553,36 @@ export default function SalesAnalysis() {
           </div>
           <div className="mt-2 text-xs text-white/70">Sales</div>
           <div className="text-sm font-semibold">{dataPoint.salesCount}</div>
+        </div>
+      )
+    },
+    []
+  )
+
+  const renderColorTooltip = useCallback(
+    (tooltip: { active?: boolean; payload?: { payload?: ColorVolumePoint }[] }) => {
+      const { active, payload } = tooltip
+      if (!active || !payload || payload.length === 0) return null
+      const dataPoint = payload[0]?.payload as ColorVolumePoint | undefined
+      if (!dataPoint) return null
+
+      const safePercentage = Number.isFinite(dataPoint.percentage)
+        ? dataPoint.percentage
+        : 0
+
+      return (
+        <div className="rounded-xl border border-white/10 bg-slate-900/90 px-4 py-3 text-white shadow-xl backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <span
+              className="h-3 w-3 rounded-full border border-white/40"
+              style={{ backgroundColor: dataPoint.color }}
+            />
+            <div className="text-sm font-semibold">{dataPoint.label}</div>
+          </div>
+          <div className="mt-3 text-xs text-white/70">Sales</div>
+          <div className="text-sm font-semibold">{dataPoint.salesCount}</div>
+          <div className="mt-2 text-xs text-white/70">of collection total</div>
+          <div className="text-sm font-semibold">{safePercentage.toFixed(1)}%</div>
         </div>
       )
     },
@@ -828,6 +974,94 @@ export default function SalesAnalysis() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        {isBusy ? (
+          <div className="min-h-[18rem] backdrop-blur-md bg-white/70 border border-white/70 rounded-2xl shadow-2xl p-6 flex items-center justify-center text-squarage-black/70">
+            Loading color breakdown...
+          </div>
+        ) : colorVolumeByCollection.length === 0 ? (
+          <div className="min-h-[18rem] backdrop-blur-md bg-white/70 border border-white/70 rounded-2xl shadow-2xl p-6 flex items-center justify-center text-squarage-black/60 text-sm">
+            No color sales data available for the Warped or Tiled collections in the selected range.
+          </div>
+        ) : (
+          colorVolumeByCollection.map(collectionStats => (
+            <div
+              key={collectionStats.collectionId}
+              className="backdrop-blur-md bg-white/70 border border-white/70 rounded-2xl shadow-2xl p-6"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <div>
+                  <h3 className="text-xl font-semibold text-squarage-black">
+                    {collectionStats.collectionName}
+                  </h3>
+                  <p className="text-sm text-squarage-black/70">
+                    Color performance for this collection.
+                  </p>
+                </div>
+                <span className="text-xs uppercase tracking-wide text-squarage-black/60">
+                  {collectionStats.totalSales} sale{collectionStats.totalSales === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div className="h-64 mt-6">
+                {collectionStats.data.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-squarage-black/60 text-sm">
+                    No color data for this collection.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={collectionStats.data}
+                      margin={{ top: 10, right: 16, left: 16, bottom: 0 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(15,23,42,0.08)"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fill: 'rgba(15,23,42,0.7)', fontSize: 12 }}
+                        stroke="rgba(15,23,42,0.15)"
+                        interval={0}
+                        angle={-20}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fill: 'rgba(15,23,42,0.7)', fontSize: 12 }}
+                        stroke="rgba(15,23,42,0.15)"
+                        width={70}
+                      >
+                        <Label
+                          value="Sales"
+                          angle={-90}
+                          position="insideLeft"
+                          style={{
+                            fill: 'rgba(15,23,42,0.55)',
+                            fontSize: 11,
+                          }}
+                          offset={10}
+                        />
+                      </YAxis>
+                      <Tooltip
+                        content={renderColorTooltip}
+                        cursor={{ fill: 'rgba(15,23,42,0.05)' }}
+                      />
+                      <Bar dataKey="salesCount" radius={[12, 12, 0, 0]} minPointSize={2}>
+                        {collectionStats.data.map(dataPoint => (
+                          <Cell key={dataPoint.color} fill={dataPoint.color || '#0f172a'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   )

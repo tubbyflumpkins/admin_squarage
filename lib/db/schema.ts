@@ -1,5 +1,6 @@
 import { pgTable, serial, text, varchar, timestamp, boolean, integer, jsonb } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
+import type { CollectionColor } from '../salesTypes'
 
 // Users table
 export const users = pgTable('users', {
@@ -58,7 +59,7 @@ export const collections = pgTable('collections', {
   id: varchar('id', { length: 255 }).primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   color: varchar('color', { length: 7 }).notNull(), // Default hex color
-  availableColors: jsonb('available_colors').$type<string[]>().default([]).notNull(), // Available colors for this collection
+  availableColors: jsonb('available_colors').$type<CollectionColor[]>().default([]).notNull(), // Available colors for this collection
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

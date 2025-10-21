@@ -21,7 +21,12 @@ export default function ColorSelector({ saleId, productId, selectedColor }: Colo
   const collection = product ? collections.find(c => c.id === product.collectionId) : undefined
   
   // Get available colors from the collection
-  const availableColors = collection?.availableColors || (collection ? [collection.color] : [])
+  const availableColors =
+    collection && collection.availableColors && collection.availableColors.length > 0
+      ? collection.availableColors
+      : collection
+      ? [{ value: collection.color, name: collection.color }]
+      : []
   
   // Use selected color, or fall back to collection's default color
   const displayColor = selectedColor || collection?.color
@@ -56,12 +61,15 @@ export default function ColorSelector({ saleId, productId, selectedColor }: Colo
             <div className="flex gap-1">
               {availableColors.map(color => (
                 <button
-                  key={color}
-                  onClick={() => handleColorSelect(color)}
+                  key={color.value}
+                  onClick={() => handleColorSelect(color.value)}
                   className={`w-6 h-6 rounded border-2 hover:scale-110 transition-transform ${
-                    selectedColor === color ? 'border-squarage-black ring-1 ring-squarage-green' : 'border-gray-300'
+                    selectedColor === color.value
+                      ? 'border-squarage-black ring-1 ring-squarage-green'
+                      : 'border-gray-300'
                   }`}
-                  style={{ backgroundColor: color }}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
                 />
               ))}
             </div>

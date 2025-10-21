@@ -10,6 +10,7 @@ import {
   Collection,
   Product,
   SaleChannel,
+  CollectionColor,
 } from './salesTypes'
 import { loadingCoordinator } from './loadingCoordinator'
 
@@ -42,7 +43,12 @@ interface SalesStore {
   deleteCollection: (id: string) => void
   addCollectionColor: (collectionId: string, color: string) => void
   removeCollectionColor: (collectionId: string, color: string) => void
-  setCollectionColors: (collectionId: string, colors: string[]) => void
+  setCollectionColors: (collectionId: string, colors: CollectionColor[]) => void
+  updateCollectionColor: (
+    collectionId: string,
+    color: string,
+    updates: Partial<CollectionColor>
+  ) => void
   
   // Product management
   addProduct: (product: Omit<Product, 'id'>) => void
@@ -68,6 +74,85 @@ interface SalesStore {
 // Debounce timer for saves
 let saveDebounceTimer: NodeJS.Timeout | null = null
 const SAVE_DEBOUNCE_MS = 5000 // Increased from 1s to 5s to reduce database calls
+
+const normalizeColorName = (value: string, providedName?: string) => {
+  if (providedName && providedName.trim().length > 0) {
+    return providedName.trim()
+  }
+
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return 'Unnamed Color'
+  }
+
+  const trimmedValue = value.trim()
+  return trimmedValue.startsWith('#') ? trimmedValue.toUpperCase() : trimmedValue
+}
+
+const createCollectionColor = (value: string, name?: string): CollectionColor => {
+  const safeValue = typeof value === 'string' ? value.trim() : ''
+  return {
+    value: safeValue,
+    name: normalizeColorName(safeValue, name),
+  }
+}
+
+const normalizeCollectionColors = (
+  rawColors: unknown,
+  fallbackColor: string
+): CollectionColor[] => {
+  const normalized: CollectionColor[] = []
+  const seen = new Set<string>()
+
+  if (Array.isArray(rawColors)) {
+    rawColors.forEach(entry => {
+      if (typeof entry === 'string') {
+        const color = createCollectionColor(entry)
+        if (!color.value) return
+        if (!seen.has(color.value)) {
+          normalized.push(color)
+          seen.add(color.value)
+        }
+      } else if (entry && typeof entry === 'object') {
+        const value = typeof (entry as any).value === 'string' ? (entry as any).value : undefined
+        if (!value) return
+        const color = createCollectionColor(value, typeof (entry as any).name === 'string' ? (entry as any).name : undefined)
+        if (!color.value) return
+        if (!seen.has(color.value)) {
+          normalized.push(color)
+          seen.add(color.value)
+        }
+      }
+    })
+  }
+
+  const fallback = typeof fallbackColor === 'string' ? fallbackColor.trim() : ''
+  if (fallback && !seen.has(fallback)) {
+    const fallbackColor = createCollectionColor(fallback)
+    if (fallbackColor.value) {
+      normalized.unshift(fallbackColor)
+    }
+  }
+
+  if (normalized.length === 0 && fallback) {
+    const fallbackColor = createCollectionColor(fallback)
+    if (fallbackColor.value) {
+      return [fallbackColor]
+    }
+  }
+
+  return normalized
+}
+
+const normalizeCollectionRecord = (
+  collection: Collection | (Collection & { availableColors?: unknown })
+): Collection => {
+  const fallbackColor = typeof collection.color === 'string' ? collection.color : ''
+  const normalized = {
+    ...collection,
+    availableColors: normalizeCollectionColors(collection.availableColors, fallbackColor),
+  }
+  return normalized as Collection
+}
 
 const useSalesStore = create<SalesStore>((set, get) => ({
   // Initial state
@@ -135,6 +220,9 @@ const useSalesStore = create<SalesStore>((set, get) => ({
               createdAt: channel.createdAt ? new Date(channel.createdAt) : new Date(),
             })
           )
+          const normalizedCollections: Collection[] = (data.collections || []).map(
+            (collection: any) => normalizeCollectionRecord(collection)
+          )
           const existingChannels = get().channels || []
           const pendingChannels = existingChannels.filter(
             channel => !normalizedChannels.some(existing => existing.id === channel.id)
@@ -143,7 +231,7 @@ const useSalesStore = create<SalesStore>((set, get) => ({
           // Always update state with received data (even if some parts are empty)
           set({
             sales: data.sales || [],
-            collections: data.collections || [],
+            collections: normalizedCollections,
             products: data.products || [],
             channels: [...normalizedChannels, ...pendingChannels],
             isLoading: false,
@@ -403,78 +491,119 @@ const useSalesStore = create<SalesStore>((set, get) => ({
   },
   
   // Collection management
-  addCollection: (collection) => {
-    const newCollection: Collection = {
+  addCollection: collection => {
+    const newCollection: Collection = normalizeCollectionRecord({
       ...collection,
       id: `col-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      availableColors: collection.availableColors || [collection.color],
-    }
-    
-    set((state) => ({
+    })
+
+    set(state => ({
       collections: [...state.collections, newCollection],
     }))
-    
+
     // Auto-save
     get().saveToServer()
   },
-  
+
   updateCollection: (id, updates) => {
-    set((state) => ({
-      collections: state.collections.map((col) =>
-        col.id === id ? { ...col, ...updates } : col
+    set(state => ({
+      collections: state.collections.map(col =>
+        col.id === id ? normalizeCollectionRecord({ ...col, ...updates }) : col
       ),
     }))
-    
+
     // Auto-save
     get().saveToServer()
   },
-  
-  deleteCollection: (id) => {
-    set((state) => ({
-      collections: state.collections.filter((col) => col.id !== id),
+
+  deleteCollection: id => {
+    set(state => ({
+      collections: state.collections.filter(col => col.id !== id),
       // Also delete all products in this collection
-      products: state.products.filter((prod) => prod.collectionId !== id),
+      products: state.products.filter(prod => prod.collectionId !== id),
     }))
-    
+
     // Auto-save
     get().saveToServer()
   },
-  
+
   addCollectionColor: (collectionId, color) => {
-    set((state) => ({
-      collections: state.collections.map((col) =>
-        col.id === collectionId
-          ? { ...col, availableColors: [...(col.availableColors || [col.color]), color] }
-          : col
-      ),
+    set(state => ({
+      collections: state.collections.map(col => {
+        if (col.id !== collectionId) return col
+        const existing = col.availableColors || []
+        if (existing.some(entry => entry.value === color)) {
+          return col
+        }
+        const nextColors = normalizeCollectionColors(
+          [...existing, createCollectionColor(color)],
+          col.color
+        )
+        return { ...col, availableColors: nextColors }
+      }),
     }))
-    
+
     // Auto-save
     get().saveToServer()
   },
-  
+
   removeCollectionColor: (collectionId, color) => {
-    set((state) => ({
-      collections: state.collections.map((col) =>
+    set(state => ({
+      collections: state.collections.map(col =>
         col.id === collectionId
-          ? { ...col, availableColors: (col.availableColors || [col.color]).filter(c => c !== color) }
+          ? {
+              ...col,
+              availableColors: normalizeCollectionColors(
+                (col.availableColors || []).filter(entry => entry.value !== color),
+                col.color
+              ),
+            }
           : col
       ),
     }))
-    
+
     // Auto-save
     get().saveToServer()
   },
-  
+
   setCollectionColors: (collectionId, colors) => {
-    set((state) => ({
-      collections: state.collections.map((col) =>
+    set(state => ({
+      collections: state.collections.map(col =>
         col.id === collectionId
-          ? { ...col, availableColors: colors }
+          ? {
+              ...col,
+              availableColors: normalizeCollectionColors(colors, col.color),
+            }
           : col
       ),
     }))
-    
+
+    // Auto-save
+    get().saveToServer()
+  },
+
+  updateCollectionColor: (collectionId, color, updates) => {
+    set(state => ({
+      collections: state.collections.map(col => {
+        if (col.id !== collectionId) return col
+        const nextColors = (col.availableColors || []).map(entry => {
+          if (entry.value !== color) return entry
+          const nextValue =
+            typeof updates.value === 'string' && updates.value.trim().length > 0
+              ? updates.value.trim()
+              : entry.value
+          const nextName =
+            updates.name !== undefined ? updates.name : entry.name
+          return createCollectionColor(nextValue, nextName)
+        })
+
+        return {
+          ...col,
+          availableColors: normalizeCollectionColors(nextColors, col.color),
+        }
+      }),
+    }))
+
     // Auto-save
     get().saveToServer()
   },

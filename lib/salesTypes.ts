@@ -7,6 +7,11 @@ export interface SaleSubtask {
   completed: boolean
 }
 
+export interface CollectionColor {
+  value: string
+  name: string
+}
+
 export interface Product {
   id: string
   name: string
@@ -18,7 +23,7 @@ export interface Collection {
   id: string
   name: string
   color: string
-  availableColors?: string[] // Colors available for products in this collection
+  availableColors?: CollectionColor[] // Colors available for products in this collection
 }
 
 export interface SaleChannel {
