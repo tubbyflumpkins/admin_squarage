@@ -451,6 +451,7 @@ export default function SalesAnalysis() {
       innerRadius = 0,
       outerRadius = 0,
       payload,
+      percent,
     }: PieLabelRenderProps) => {
       if (typeof cx !== 'number' || typeof cy !== 'number') return null
 
@@ -463,6 +464,7 @@ export default function SalesAnalysis() {
 
       const channelName = (payload as { name?: string })?.name ?? ''
       const revenueCents = (payload as { revenueCents?: number }).revenueCents
+      const percentage = typeof percent === 'number' ? (percent * 100).toFixed(1) : '0'
 
       if (!channelName || typeof revenueCents !== 'number') return null
 
@@ -479,7 +481,7 @@ export default function SalesAnalysis() {
             {channelName}
           </tspan>
           <tspan x={x} dy="1.2em" fill="rgba(15,23,42,0.7)">
-            {formatCurrency(revenueCents)}
+            {formatCurrency(revenueCents)} ({percentage}%)
           </tspan>
         </text>
       )
@@ -495,6 +497,7 @@ export default function SalesAnalysis() {
       innerRadius = 0,
       outerRadius = 0,
       payload,
+      percent,
     }: PieLabelRenderProps) => {
       if (typeof cx !== 'number' || typeof cy !== 'number') return null
 
@@ -507,6 +510,7 @@ export default function SalesAnalysis() {
 
       const channelName = (payload as { name?: string })?.name ?? ''
       const salesCount = (payload as { salesCount?: number }).salesCount
+      const percentage = typeof percent === 'number' ? (percent * 100).toFixed(1) : '0'
 
       if (!channelName || typeof salesCount !== 'number') return null
 
@@ -523,7 +527,7 @@ export default function SalesAnalysis() {
             {channelName}
           </tspan>
           <tspan x={x} dy="1.2em" fill="rgba(15,23,42,0.7)">
-            {salesCount} sale{salesCount === 1 ? '' : 's'}
+            {salesCount} sale{salesCount === 1 ? '' : 's'} ({percentage}%)
           </tspan>
         </text>
       )
