@@ -80,10 +80,17 @@ const useDashboardStore = create<DashboardStore>((set, get) => ({
           // Update Sales store
           const salesStore = useSalesStore.getState()
           if (data.sales) {
+            // Normalize channel dates
+            const normalizedChannels = (data.sales.channels || []).map((channel: any) => ({
+              ...channel,
+              createdAt: channel.createdAt ? new Date(channel.createdAt) : new Date(),
+            }))
+
             useSalesStore.setState({
               sales: data.sales.sales || [],
               collections: data.sales.collections || [],
               products: data.sales.products || [],
+              channels: normalizedChannels,
               isLoading: false,
               hasLoadedFromServer: true
             })

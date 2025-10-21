@@ -7,16 +7,17 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db, isDatabaseConfigured } from '@/lib/db'
-import { 
-  todos, 
-  categories, 
-  owners, 
-  subtasks, 
+import {
+  todos,
+  categories,
+  owners,
+  subtasks,
   users,
   sales,
   collections,
   products,
   saleSubtasks,
+  saleChannels,
   calendarEvents,
   calendarTypes,
   eventReminders,
@@ -39,7 +40,7 @@ export async function GET() {
       console.log('[Dashboard API] Database not configured')
       return NextResponse.json({
         todos: { todos: [], categories: [], owners: [] },
-        sales: { sales: [], collections: [], products: [] },
+        sales: { sales: [], collections: [], products: [], channels: [] },
         calendar: { events: [], calendarTypes: [], reminders: [] },
         quickLinks: { quickLinks: [] }
       })
@@ -57,6 +58,7 @@ export async function GET() {
       dbCollections,
       dbProducts,
       dbSaleSubtasks,
+      dbSaleChannels,
       dbEvents,
       dbCalendarTypes,
       dbEventReminders,
@@ -71,6 +73,7 @@ export async function GET() {
       db.select().from(collections),
       db.select().from(products),
       db.select().from(saleSubtasks),
+      db.select().from(saleChannels).orderBy(saleChannels.name),
       db.select().from(calendarEvents).orderBy(desc(calendarEvents.createdAt)),
       db.select().from(calendarTypes),
       db.select().from(eventReminders),
@@ -80,6 +83,7 @@ export async function GET() {
     console.log('[Dashboard API] Data fetched successfully:', {
       todos: dbTodos.length,
       sales: dbSales.length,
+      channels: dbSaleChannels.length,
       events: dbEvents.length,
       quickLinks: dbQuickLinks.length
     })
@@ -146,10 +150,12 @@ export async function GET() {
     const transformedSales = dbSales.map(sale => ({
       id: sale.id,
       name: sale.name,
-      productId: sale.productId,
-      revenue: sale.revenue,
+      productId: sale.productId || undefined,
+      revenue: sale.revenue || undefined,
+      selectedColor: sale.selectedColor || undefined,
       placementDate: sale.placementDate,
       deliveryMethod: sale.deliveryMethod,
+      channelId: sale.channelId || undefined,
       status: sale.status,
       notes: sale.notes || undefined,
       subtasks: saleSubtasksBySaleId[sale.id] || undefined,
@@ -167,7 +173,8 @@ export async function GET() {
       sales: {
         sales: transformedSales,
         collections: dbCollections,
-        products: dbProducts
+        products: dbProducts,
+        channels: dbSaleChannels
       },
       calendar: {
         events: dbEvents,
