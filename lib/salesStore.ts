@@ -252,6 +252,10 @@ const useSalesStore = create<SalesStore>((set, get) => ({
           }
         } else {
           console.log('Sales data saved successfully')
+
+          // Clear the loading coordinator cache so next load gets fresh data
+          loadingCoordinator.clearCache('dashboard-all-data')
+          loadingCoordinator.clearCache('sales-data')
         }
       } catch (error) {
         console.error('Error saving sales data:', error)
