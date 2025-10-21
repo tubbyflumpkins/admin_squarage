@@ -478,10 +478,10 @@ export default function SalesAnalysis() {
           className="text-xs"
         >
           <tspan x={x} dy="-0.35em" fontWeight="600">
-            {channelName}
+            {channelName} - {percentage}%
           </tspan>
           <tspan x={x} dy="1.2em" fill="rgba(15,23,42,0.7)">
-            {formatCurrency(revenueCents)} ({percentage}%)
+            {formatCurrency(revenueCents)}
           </tspan>
         </text>
       )
@@ -524,10 +524,10 @@ export default function SalesAnalysis() {
           className="text-xs"
         >
           <tspan x={x} dy="-0.35em" fontWeight="600">
-            {channelName}
+            {channelName} - {percentage}%
           </tspan>
           <tspan x={x} dy="1.2em" fill="rgba(15,23,42,0.7)">
-            {salesCount} sale{salesCount === 1 ? '' : 's'} ({percentage}%)
+            {salesCount} sale{salesCount === 1 ? '' : 's'}
           </tspan>
         </text>
       )
