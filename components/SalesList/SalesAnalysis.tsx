@@ -275,9 +275,9 @@ export default function SalesAnalysis() {
     loadFromServer,
   } = useSalesStore()
 
-  const initialRange = getPresetRange('current_month')
+  const initialRange = getPresetRange('all_time')
   const [selectedPreset, setSelectedPreset] = useState<TimePreset | 'custom'>(
-    'current_month'
+    'all_time'
   )
   const [startDate, setStartDate] = useState<Date>(initialRange.start)
   const [endDate, setEndDate] = useState<Date>(initialRange.end)
