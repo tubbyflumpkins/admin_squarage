@@ -219,7 +219,7 @@ export default function ExpenseListGrid() {
         {expenses.length === 0 && !isAddingNew && (
           <div className="bg-squarage-white/80 py-12 text-center">
             <p className="text-brown-medium text-lg font-medium mb-2">No expenses yet</p>
-            <p className="text-brown-light text-sm">Click "Add Expense" to get started</p>
+            <p className="text-brown-light text-sm">Click &quot;Add Expense&quot; to get started</p>
           </div>
         )}
       </div>
