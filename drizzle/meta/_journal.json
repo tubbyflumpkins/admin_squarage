@@ -15,6 +15,20 @@
       "when": 1760844799986,
       "tag": "0001_famous_tyger_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1766706818000,
+      "tag": "0002_expenses",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1766706819000,
+      "tag": "0003_expenses_vendor",
+      "breakpoints": true
     }
   ]
 }

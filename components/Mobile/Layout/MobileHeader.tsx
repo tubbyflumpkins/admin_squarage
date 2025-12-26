@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Menu, X, Home, ListTodo, TrendingUp, Calendar, Settings, LogOut, User } from 'lucide-react'
+import { Menu, X, Home, ListTodo, TrendingUp, Receipt, Calendar, Settings, LogOut, User } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 
@@ -149,6 +149,20 @@ export default function MobileHeader() {
                 >
                   <TrendingUp size={18} className={pathname === '/sales' ? 'text-squarage-orange' : 'text-gray-600'} />
                   <span className="font-medium">Sales Tracker</span>
+                </Link>
+
+                {/* Expenses Link */}
+                <Link
+                  href="/expenses"
+                  onClick={toggleMenu}
+                  className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
+                    pathname === '/expenses'
+                      ? 'bg-squarage-orange/10 text-squarage-orange'
+                      : 'hover:bg-gray-100 text-squarage-black'
+                  }`}
+                >
+                  <Receipt size={18} className={pathname === '/expenses' ? 'text-squarage-orange' : 'text-gray-600'} />
+                  <span className="font-medium">Expenses</span>
                 </Link>
 
                 {/* Calendar Link */}

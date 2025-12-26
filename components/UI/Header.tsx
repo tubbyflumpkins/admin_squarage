@@ -40,6 +40,12 @@ export default function Header() {
             >
               Sales Tracker
             </Link>
+            <Link
+              href="/expenses"
+              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
+            >
+              Expenses
+            </Link>
             <Link 
               href="/calendar" 
               className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"

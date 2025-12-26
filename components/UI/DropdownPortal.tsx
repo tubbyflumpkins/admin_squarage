@@ -17,5 +17,10 @@ export default function DropdownPortal({ children }: DropdownPortalProps) {
 
   if (!mounted) return null
 
-  return createPortal(children, document.body)
+  return createPortal(
+    <div data-dropdown-portal="true">
+      {children}
+    </div>,
+    document.body
+  )
 }

@@ -53,6 +53,35 @@ export const subtasks = pgTable('subtasks', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// Expense categories table
+export const expenseCategories = pgTable('expense_categories', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  color: varchar('color', { length: 7 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Expense paid-by table
+export const expensePaidBy = pgTable('expense_paid_by', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  color: varchar('color', { length: 7 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Expenses table
+export const expenses = pgTable('expenses', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  paidBy: varchar('paid_by', { length: 255 }).notNull(),
+  name: text('name').notNull(),
+  vendor: text('vendor').notNull().default(''),
+  costCents: integer('cost_cents').notNull(),
+  date: timestamp('date'),
+  category: varchar('category', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull(),
+})
+
 
 // Collections table
 export const collections = pgTable('collections', {
@@ -313,6 +342,12 @@ export type Category = typeof categories.$inferSelect
 export type NewCategory = typeof categories.$inferInsert
 export type Owner = typeof owners.$inferSelect
 export type NewOwner = typeof owners.$inferInsert
+export type ExpenseCategory = typeof expenseCategories.$inferSelect
+export type NewExpenseCategory = typeof expenseCategories.$inferInsert
+export type ExpensePaidBy = typeof expensePaidBy.$inferSelect
+export type NewExpensePaidBy = typeof expensePaidBy.$inferInsert
+export type Expense = typeof expenses.$inferSelect
+export type NewExpense = typeof expenses.$inferInsert
 export type Todo = typeof todos.$inferSelect
 export type NewTodo = typeof todos.$inferInsert
 export type Subtask = typeof subtasks.$inferSelect
