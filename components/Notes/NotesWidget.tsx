@@ -29,7 +29,7 @@ export default function NotesWidget() {
 
   return (
     <div
-      className="relative backdrop-blur-md bg-white/35 rounded-2xl shadow-2xl border border-white/40 p-6 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:shadow-3xl"
+      className="relative backdrop-blur-md bg-white/35 rounded-2xl shadow-2xl border border-white/40 p-6 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:shadow-3xl min-h-[300px]"
       onClick={() => router.push('/notes')}
     >
       {/* Overlay to prevent interactions with inner content */}

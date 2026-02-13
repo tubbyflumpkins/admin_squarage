@@ -215,9 +215,8 @@ export default function NotesFullPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6 flex items-baseline gap-4">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-white drop-shadow-lg">Notes</h1>
-        <span className="text-lg text-white/80">{notes.length} {notes.length === 1 ? 'note' : 'notes'}</span>
       </div>
 
       {/* Glass container - Apple Notes layout */}
