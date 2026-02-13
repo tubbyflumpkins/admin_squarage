@@ -78,7 +78,7 @@
   /* ContentEditable placeholder */
   [data-placeholder]:empty::before {
     content: attr(data-placeholder);
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(51, 51, 51, 0.3);
     pointer-events: none;
   }
 }

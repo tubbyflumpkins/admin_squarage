@@ -23,19 +23,19 @@ function NoteListItem({ note, isSelected, onSelect }: {
   return (
     <button
       onClick={onSelect}
-      className={`w-full text-left px-4 py-3 border-b border-white/10 transition-all duration-150 ${
+      className={`w-full text-left px-4 py-3 border-b border-squarage-black/5 transition-all duration-150 ${
         isSelected
-          ? 'bg-white/30 border-l-2 border-l-squarage-yellow'
-          : 'hover:bg-white/15 border-l-2 border-l-transparent'
+          ? 'bg-white/40 border-l-2 border-l-squarage-yellow'
+          : 'hover:bg-white/20 border-l-2 border-l-transparent'
       }`}
     >
-      <div className="font-semibold text-white truncate text-sm">
+      <div className="font-semibold text-squarage-black truncate text-sm">
         {note.title || 'Untitled Note'}
       </div>
-      <div className="text-white/50 text-xs mt-0.5 truncate">
+      <div className="text-squarage-black/50 text-xs mt-0.5 truncate">
         {preview || 'No content'}
       </div>
-      <div className="text-white/40 text-xs mt-1">
+      <div className="text-squarage-black/40 text-xs mt-1">
         {timeAgo}
       </div>
     </button>
@@ -92,12 +92,12 @@ function NoteEditor({ note }: { note: Note }) {
         type="text"
         value={note.title}
         onChange={(e) => updateNoteTitle(note.id, e.target.value)}
-        className="text-2xl font-bold text-white bg-transparent border-none outline-none px-6 pt-5 pb-2 placeholder-white/40 w-full"
+        className="text-2xl font-bold text-squarage-black bg-transparent border-none outline-none px-6 pt-5 pb-2 placeholder-squarage-black/30 w-full"
         placeholder="Note title..."
       />
 
       {/* Date */}
-      <div className="px-6 pb-3 text-white/40 text-xs">
+      <div className="px-6 pb-3 text-squarage-black/40 text-xs">
         Last modified {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
       </div>
 
@@ -109,7 +109,7 @@ function NoteEditor({ note }: { note: Note }) {
             document.execCommand('bold')
             handleContentChange()
           }}
-          className="px-2.5 py-1 rounded text-white/60 hover:text-white hover:bg-white/15 transition-colors text-sm font-bold"
+          className="px-2.5 py-1 rounded text-squarage-black/50 hover:text-squarage-black hover:bg-squarage-black/10 transition-colors text-sm font-bold"
           title="Bold (⌘B)"
         >
           B
@@ -120,7 +120,7 @@ function NoteEditor({ note }: { note: Note }) {
             document.execCommand('italic')
             handleContentChange()
           }}
-          className="px-2.5 py-1 rounded text-white/60 hover:text-white hover:bg-white/15 transition-colors text-sm italic"
+          className="px-2.5 py-1 rounded text-squarage-black/50 hover:text-squarage-black hover:bg-squarage-black/10 transition-colors text-sm italic"
           title="Italic (⌘I)"
         >
           I
@@ -131,19 +131,19 @@ function NoteEditor({ note }: { note: Note }) {
             document.execCommand('underline')
             handleContentChange()
           }}
-          className="px-2.5 py-1 rounded text-white/60 hover:text-white hover:bg-white/15 transition-colors text-sm underline"
+          className="px-2.5 py-1 rounded text-squarage-black/50 hover:text-squarage-black hover:bg-squarage-black/10 transition-colors text-sm underline"
           title="Underline (⌘U)"
         >
           U
         </button>
-        <div className="w-px bg-white/20 mx-1" />
+        <div className="w-px bg-squarage-black/15 mx-1" />
         <button
           onMouseDown={(e) => {
             e.preventDefault()
             document.execCommand('insertUnorderedList')
             handleContentChange()
           }}
-          className="px-2.5 py-1 rounded text-white/60 hover:text-white hover:bg-white/15 transition-colors text-sm"
+          className="px-2.5 py-1 rounded text-squarage-black/50 hover:text-squarage-black hover:bg-squarage-black/10 transition-colors text-sm"
           title="Bullet List"
         >
           &#8226; List
@@ -154,7 +154,7 @@ function NoteEditor({ note }: { note: Note }) {
             document.execCommand('insertOrderedList')
             handleContentChange()
           }}
-          className="px-2.5 py-1 rounded text-white/60 hover:text-white hover:bg-white/15 transition-colors text-sm"
+          className="px-2.5 py-1 rounded text-squarage-black/50 hover:text-squarage-black hover:bg-squarage-black/10 transition-colors text-sm"
           title="Numbered List"
         >
           1. List
@@ -162,7 +162,7 @@ function NoteEditor({ note }: { note: Note }) {
       </div>
 
       {/* Divider */}
-      <div className="mx-6 border-t border-white/15" />
+      <div className="mx-6 border-t border-squarage-black/10" />
 
       {/* Content editor */}
       <div
@@ -173,7 +173,7 @@ function NoteEditor({ note }: { note: Note }) {
         onKeyDown={handleKeyDown}
         onFocus={() => setIsEditorFocused(true)}
         onBlur={() => setIsEditorFocused(false)}
-        className="flex-1 px-6 py-4 text-white/90 text-sm leading-relaxed outline-none overflow-y-auto scrollbar-thin prose prose-invert max-w-none
+        className="flex-1 px-6 py-4 text-squarage-black/90 text-sm leading-relaxed outline-none overflow-y-auto scrollbar-thin max-w-none
           [&_b]:font-bold [&_strong]:font-bold
           [&_i]:italic [&_em]:italic
           [&_u]:underline
@@ -224,18 +224,18 @@ export default function NotesFullPage() {
       <div className="relative backdrop-blur-md bg-white/35 rounded-2xl shadow-2xl border border-white/40 overflow-hidden" style={{ height: 'calc(100vh - 200px)' }}>
         <div className="flex h-full">
           {/* Left sidebar - Note list */}
-          <div className="w-72 border-r border-white/20 flex flex-col bg-white/5 shrink-0">
+          <div className="w-72 border-r border-squarage-black/10 flex flex-col bg-white/5 shrink-0">
             {/* Search + New */}
-            <div className="p-3 border-b border-white/15 flex flex-col gap-2">
+            <div className="p-3 border-b border-squarage-black/10 flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-squarage-black/40" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search notes..."
-                    className="w-full pl-8 pr-3 py-1.5 bg-white/10 border border-white/15 rounded-lg text-white text-xs placeholder-white/40 outline-none focus:border-white/30 transition-colors"
+                    className="w-full pl-8 pr-3 py-1.5 bg-white/20 border border-squarage-black/10 rounded-lg text-squarage-black text-xs placeholder-squarage-black/40 outline-none focus:border-squarage-black/20 transition-colors"
                   />
                 </div>
                 <button
@@ -252,12 +252,12 @@ export default function NotesFullPage() {
             <div className="flex-1 overflow-y-auto scrollbar-thin">
               {!isHydrated ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white/50" />
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-squarage-black/30" />
                 </div>
               ) : filteredNotes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                  <FileText className="w-10 h-10 text-white/30 mb-3" />
-                  <p className="text-white/50 text-sm">
+                  <FileText className="w-10 h-10 text-squarage-black/20 mb-3" />
+                  <p className="text-squarage-black/40 text-sm">
                     {searchQuery ? 'No notes found' : 'No notes yet'}
                   </p>
                   {!searchQuery && (
@@ -287,10 +287,10 @@ export default function NotesFullPage() {
             {selectedNote ? (
               <>
                 {/* Editor toolbar */}
-                <div className="flex items-center justify-end px-4 py-2 border-b border-white/15">
+                <div className="flex items-center justify-end px-4 py-2 border-b border-squarage-black/10">
                   <button
                     onClick={() => handleDelete(selectedNote.id)}
-                    className="p-1.5 rounded-lg text-white/40 hover:text-squarage-red hover:bg-white/10 transition-colors"
+                    className="p-1.5 rounded-lg text-squarage-black/30 hover:text-squarage-red hover:bg-squarage-black/5 transition-colors"
                     title="Delete Note"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -301,8 +301,8 @@ export default function NotesFullPage() {
             ) : (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
-                  <FileText className="w-16 h-16 text-white/20 mx-auto mb-4" />
-                  <p className="text-white/40 text-lg">Select a note or create a new one</p>
+                  <FileText className="w-16 h-16 text-squarage-black/15 mx-auto mb-4" />
+                  <p className="text-squarage-black/40 text-lg">Select a note or create a new one</p>
                 </div>
               </div>
             )}
