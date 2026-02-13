@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText } from 'lucide-react'
 import useNotesStore from '@/lib/notesStore'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -38,12 +37,8 @@ export default function NotesWidget() {
       {/* Content */}
       <div className="relative">
         {/* Header */}
-        <div className="flex items-center gap-2 mb-4">
-          <FileText className="w-5 h-5 text-squarage-black/70" />
-          <h2 className="text-lg font-bold text-squarage-black/80">Notes</h2>
-          {isHydrated && (
-            <span className="text-sm text-squarage-black/50 ml-auto">{notes.length}</span>
-          )}
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-white">Notes</h2>
         </div>
 
         {!isHydrated ? (
