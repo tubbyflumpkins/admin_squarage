@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Plus, Trash2, FileText, Search } from 'lucide-react'
+import { Plus, Trash2, FileText, Search, Share2, Check } from 'lucide-react'
 import useNotesStore from '@/lib/notesStore'
 import { Note } from '@/lib/notesTypes'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, format } from 'date-fns'
+import { useSearchParams } from 'next/navigation'
 
 function stripHtml(html: string): string {
   const div = document.createElement('div')
@@ -187,9 +188,25 @@ function NoteEditor({ note }: { note: Note }) {
   )
 }
 
+function generateNoteSlug(note: Note): string {
+  const slug = note.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    || 'untitled'
+  const date = format(new Date(note.createdAt), 'yyyy-MM-dd')
+  return `note:${slug}-${date}`
+}
+
+function findNoteBySlug(notes: Note[], slug: string): Note | undefined {
+  return notes.find(n => generateNoteSlug(n) === slug)
+}
+
 export default function NotesFullPage() {
   const [isHydrated, setIsHydrated] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [copied, setCopied] = useState(false)
+  const searchParams = useSearchParams()
   const { notes, selectedNoteId, loadFromServer, selectNote, addNote, deleteNote, getSelectedNote } = useNotesStore()
 
   useEffect(() => {
@@ -197,6 +214,16 @@ export default function NotesFullPage() {
       setIsHydrated(true)
     })
   }, [])
+
+  // Auto-select note from URL slug
+  useEffect(() => {
+    if (!isHydrated || notes.length === 0) return
+    const slug = searchParams.get('id')
+    if (slug) {
+      const match = findNoteBySlug(notes, slug)
+      if (match) selectNote(match.id)
+    }
+  }, [isHydrated, notes, searchParams])
 
   const selectedNote = getSelectedNote()
 
@@ -211,6 +238,15 @@ export default function NotesFullPage() {
     if (confirm('Delete this note?')) {
       deleteNote(id)
     }
+  }
+
+  const handleShare = (note: Note) => {
+    const slug = generateNoteSlug(note)
+    const url = `${window.location.origin}/notes?id=${slug}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
   }
 
   return (
@@ -286,7 +322,14 @@ export default function NotesFullPage() {
             {selectedNote ? (
               <>
                 {/* Editor toolbar */}
-                <div className="flex items-center justify-end px-4 py-2 border-b border-squarage-black/10">
+                <div className="flex items-center justify-end gap-1 px-4 py-2 border-b border-squarage-black/10">
+                  <button
+                    onClick={() => handleShare(selectedNote)}
+                    className="p-1.5 rounded-lg text-squarage-black/30 hover:text-squarage-black hover:bg-squarage-black/5 transition-colors"
+                    title="Copy share link"
+                  >
+                    {copied ? <Check className="w-4 h-4 text-squarage-green" /> : <Share2 className="w-4 h-4" />}
+                  </button>
                   <button
                     onClick={() => handleDelete(selectedNote.id)}
                     className="p-1.5 rounded-lg text-squarage-black/30 hover:text-squarage-red hover:bg-squarage-black/5 transition-colors"

@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import Header from '@/components/UI/Header'
 import NotesFullPage from '@/components/Notes/NotesFullPage'
@@ -36,7 +36,9 @@ export default function NotesPage() {
   return (
     <div className="min-h-screen bg-squarage-green">
       <Header />
-      <NotesFullPage />
+      <Suspense>
+        <NotesFullPage />
+      </Suspense>
     </div>
   )
 }
