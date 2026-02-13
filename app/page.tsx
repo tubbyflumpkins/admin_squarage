@@ -9,6 +9,7 @@ import TodoWidget from '@/components/TodoList/TodoWidget'
 import SalesWidget from '@/components/SalesList/SalesWidget'
 import CalendarWidget from '@/components/Calendar/CalendarWidget'
 import QuickLinksWidget from '@/components/QuickLinks/QuickLinksWidget'
+import NotesWidget from '@/components/Notes/NotesWidget'
 import MobileLayout from '@/components/Mobile/Layout/MobileLayout'
 
 export default function Home() {
@@ -70,6 +71,7 @@ export default function Home() {
           <SalesWidget />
           <CalendarWidget />
           <QuickLinksWidget />
+          <NotesWidget />
         </div>
       </main>
     </div>
