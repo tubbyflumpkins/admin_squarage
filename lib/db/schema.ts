@@ -384,6 +384,7 @@ export type NewNote = typeof notes.$inferInsert
 // Notes table
 export const notes = pgTable('notes', {
   id: varchar('id', { length: 255 }).primaryKey(),
+  userId: varchar('user_id', { length: 255 }).references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   content: text('content').notNull().default(''),
   createdAt: timestamp('created_at').defaultNow().notNull(),

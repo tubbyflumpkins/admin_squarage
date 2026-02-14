@@ -3,10 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db, isDatabaseConfigured } from '@/lib/db'
 import { notes } from '@/lib/db/schema'
-import { eq, desc, sql as drizzleSql } from 'drizzle-orm'
+import { eq, desc, or, isNull } from 'drizzle-orm'
 
-// GET - Fetch all notes
-export async function GET() {
+// GET - Fetch notes for the current user (+ optionally a shared note by ID)
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) {
@@ -14,23 +14,58 @@ export async function GET() {
     }
 
     if (!isDatabaseConfigured() || !db) {
-      return NextResponse.json({ notes: [] })
+      return NextResponse.json({ notes: [], sharedNote: null })
     }
 
-    const allNotes = await db.select().from(notes).orderBy(desc(notes.updatedAt))
+    const userId = (session.user as { id?: string })?.id
+
+    // Fetch notes belonging to this user OR notes without a userId (legacy)
+    const userNotes = userId
+      ? await db.select().from(notes)
+          .where(or(eq(notes.userId, userId), isNull(notes.userId)))
+          .orderBy(desc(notes.updatedAt))
+      : await db.select().from(notes)
+          .where(isNull(notes.userId))
+          .orderBy(desc(notes.updatedAt))
+
+    // If a specific noteId is requested (deep link), fetch that note too
+    const { searchParams } = new URL(request.url)
+    const sharedNoteId = searchParams.get('noteId')
+    let sharedNote = null
+
+    if (sharedNoteId) {
+      // Check if the shared note is already in the user's notes
+      const alreadyIncluded = userNotes.some(n => n.id === sharedNoteId)
+      if (!alreadyIncluded) {
+        const result = await db.select().from(notes).where(eq(notes.id, sharedNoteId)).limit(1)
+        if (result.length > 0) {
+          const n = result[0]
+          sharedNote = {
+            id: n.id,
+            userId: n.userId,
+            title: n.title,
+            content: n.content,
+            createdAt: n.createdAt.toISOString(),
+            updatedAt: n.updatedAt.toISOString(),
+          }
+        }
+      }
+    }
 
     return NextResponse.json({
-      notes: allNotes.map(n => ({
+      notes: userNotes.map(n => ({
         id: n.id,
+        userId: n.userId,
         title: n.title,
         content: n.content,
         createdAt: n.createdAt.toISOString(),
         updatedAt: n.updatedAt.toISOString(),
-      }))
+      })),
+      sharedNote,
     })
   } catch (error) {
     console.error('Error fetching notes:', error)
-    return NextResponse.json({ notes: [] })
+    return NextResponse.json({ notes: [], sharedNote: null })
   }
 }
 
@@ -48,6 +83,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { id, title, content } = body
+    const userId = (session.user as { id?: string })?.id
 
     if (!id || !title) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -56,6 +92,7 @@ export async function POST(request: NextRequest) {
     const now = new Date()
     await db.insert(notes).values({
       id,
+      userId: userId || null,
       title,
       content: content || '',
       createdAt: now,
@@ -69,7 +106,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - Update an existing note (efficient single-note save)
+// PUT - Update an existing note
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -103,7 +140,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Delete a note
+// DELETE - Delete a note (only own notes)
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

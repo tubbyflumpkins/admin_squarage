@@ -7,7 +7,7 @@ interface NotesStore {
   isLoading: boolean
   hasLoadedFromServer: boolean
 
-  loadFromServer: () => Promise<void>
+  loadFromServer: (sharedNoteId?: string) => Promise<void>
   selectNote: (id: string | null) => void
   addNote: () => void
   deleteNote: (id: string) => void
@@ -61,12 +61,18 @@ const useNotesStore = create<NotesStore>((set, get) => ({
   isLoading: false,
   hasLoadedFromServer: false,
 
-  loadFromServer: async () => {
+  loadFromServer: async (sharedNoteId?: string) => {
     if (get().isLoading) return
 
     set({ isLoading: true })
     try {
-      const response = await fetch('/api/notes/neon', {
+      // Build URL with optional shared note ID for deep links
+      let url = '/api/notes/neon'
+      if (sharedNoteId) {
+        url += `?noteId=${encodeURIComponent(sharedNoteId)}`
+      }
+
+      const response = await fetch(url, {
         credentials: 'include',
       })
       if (!response.ok) {
@@ -83,12 +89,32 @@ const useNotesStore = create<NotesStore>((set, get) => ({
         updatedAt: new Date(n.updatedAt),
       }))
 
+      // If there's a shared note from another user, prepend it to the list
+      if (data.sharedNote) {
+        const shared = {
+          ...data.sharedNote,
+          createdAt: new Date(data.sharedNote.createdAt),
+          updatedAt: new Date(data.sharedNote.updatedAt),
+        }
+        loadedNotes.unshift(shared)
+      }
+
+      // Determine which note to select
+      let selectedId = get().selectedNoteId
+      if (sharedNoteId) {
+        // Deep link: select the shared note
+        const found = loadedNotes.find(n => n.id === sharedNoteId)
+        if (found) selectedId = found.id
+      }
+      if (!selectedId && loadedNotes.length > 0) {
+        selectedId = loadedNotes[0].id
+      }
+
       set({
         notes: loadedNotes,
         isLoading: false,
         hasLoadedFromServer: true,
-        // Auto-select first note if none selected
-        selectedNoteId: get().selectedNoteId || (loadedNotes.length > 0 ? loadedNotes[0].id : null),
+        selectedNoteId: selectedId,
       })
     } catch (error) {
       console.error('Error loading notes:', error)

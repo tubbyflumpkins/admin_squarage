@@ -3,24 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import useNotesStore from '@/lib/notesStore'
-import { Note } from '@/lib/notesTypes'
-import { format, formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 
 function stripHtml(html: string): string {
   if (typeof document === 'undefined') return ''
   const div = document.createElement('div')
   div.innerHTML = html
   return div.textContent || div.innerText || ''
-}
-
-function generateNoteSlug(note: Note): string {
-  const slug = note.title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    || 'untitled'
-  const date = format(new Date(note.createdAt), 'yyyy-MM-dd')
-  return `note:${slug}-${date}`
 }
 
 export default function NotesWidget() {
@@ -62,11 +51,10 @@ export default function NotesWidget() {
         <div className="grid grid-cols-3 gap-3">
           {recentNotes.map((note) => {
             const preview = stripHtml(note.content).substring(0, 50)
-            const slug = generateNoteSlug(note)
             return (
               <div
                 key={note.id}
-                onClick={() => router.push(`/notes?id=${slug}`)}
+                onClick={() => router.push(`/notes?id=${note.id}`)}
                 className="flex flex-col p-3 rounded-lg bg-white/20 backdrop-blur-sm hover:bg-white/30 hover:scale-105 transition-all duration-200 cursor-pointer"
               >
                 <div className="font-medium text-squarage-black text-xs truncate mb-1">

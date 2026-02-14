@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Plus, Trash2, FileText, Search, Share2, Check } from 'lucide-react'
 import useNotesStore from '@/lib/notesStore'
 import { Note } from '@/lib/notesTypes'
-import { formatDistanceToNow, format } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 import { useSearchParams } from 'next/navigation'
 
 function stripHtml(html: string): string {
@@ -188,20 +188,6 @@ function NoteEditor({ note }: { note: Note }) {
   )
 }
 
-function generateNoteSlug(note: Note): string {
-  const slug = note.title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    || 'untitled'
-  const date = format(new Date(note.createdAt), 'yyyy-MM-dd')
-  return `note:${slug}-${date}`
-}
-
-function findNoteBySlug(notes: Note[], slug: string): Note | undefined {
-  return notes.find(n => generateNoteSlug(n) === slug)
-}
-
 export default function NotesFullPage() {
   const [isHydrated, setIsHydrated] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -210,20 +196,12 @@ export default function NotesFullPage() {
   const { notes, selectedNoteId, loadFromServer, selectNote, addNote, deleteNote, getSelectedNote } = useNotesStore()
 
   useEffect(() => {
-    loadFromServer().then(() => {
+    // Pass the shared note ID from the URL so the API can fetch it
+    const noteId = searchParams.get('id')
+    loadFromServer(noteId || undefined).then(() => {
       setIsHydrated(true)
     })
   }, [])
-
-  // Auto-select note from URL slug
-  useEffect(() => {
-    if (!isHydrated || notes.length === 0) return
-    const slug = searchParams.get('id')
-    if (slug) {
-      const match = findNoteBySlug(notes, slug)
-      if (match) selectNote(match.id)
-    }
-  }, [isHydrated, notes, searchParams])
 
   const selectedNote = getSelectedNote()
 
@@ -241,8 +219,8 @@ export default function NotesFullPage() {
   }
 
   const handleShare = (note: Note) => {
-    const slug = generateNoteSlug(note)
-    const url = `${window.location.origin}/notes?id=${slug}`
+    // Use the note's actual database ID for reliable deep links
+    const url = `${window.location.origin}/notes?id=${note.id}`
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
