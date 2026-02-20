@@ -53,6 +53,7 @@
     "zustand": "^4.5.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "dotenv": "^17.2.1",
     "drizzle-kit": "^0.31.4",
     "eslint": "^8.57.0",
