@@ -10,97 +10,124 @@
 - Mobile vs Desktop authentication differences
 
 ## Project Overview
-An admin dashboard for Squarage company built with Next.js 14, TypeScript, and Tailwind CSS. The dashboard features a modular widget-based design with a fully functional todo list system as the primary feature. The system includes NextAuth.js authentication with role-based access control.
+An admin dashboard for Squarage company built with Next.js 15, React 19, TypeScript, and Tailwind CSS. The dashboard features a modular widget-based design with todo list, sales tracker, calendar, notes, quick links, and expenses. The system includes NextAuth.js authentication with role-based access control.
 
 ## Tech Stack
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
+- **React**: React 19
 - **Authentication**: NextAuth.js v4 with credentials provider
 - **Database**: Neon PostgreSQL (Serverless)
 - **ORM**: Drizzle ORM
 - **Styling**: Tailwind CSS with custom Squarage brand colors
-- **State Management**: Zustand with database persistence
+- **State Management**: Zustand 5 with store factory pattern (`createEntityStoreSlice`)
 - **Drag & Drop**: @dnd-kit/sortable
 - **Icons**: Lucide React
 - **Date Handling**: date-fns
 - **Password Hashing**: bcryptjs
+- **Testing**: Playwright (E2E)
 - **Deployment**: Vercel with Neon integration
 
 ## Project Structure
 ```
 admin_squarage/
-├── app/                       # Next.js app directory
+├── app/                       # Next.js 15 app directory
 │   ├── layout.tsx            # Root layout with fonts
 │   ├── globals.css           # Global styles & Tailwind
 │   ├── page.tsx              # Dashboard homepage
 │   ├── api/
-│   │   └── todos/
-│   │       ├── route.ts      # Legacy JSON file API endpoint
-│   │       └── neon/
-│   │           └── route.ts  # Neon database API endpoint
-│   │   └── sales/
-│   │       └── neon/
-│   │           └── route.ts  # Sales Neon database API endpoint
-│   ├── todo/
-│   │   └── page.tsx          # Full-page todo view
-│   └── sales/
-│       └── page.tsx          # Full-page sales view
+│   │   ├── todos/neon/route.ts     # Todo CRUD (uses API helpers)
+│   │   ├── sales/neon/route.ts     # Sales CRUD (uses API helpers)
+│   │   ├── calendar/neon/route.ts  # Calendar CRUD (uses API helpers)
+│   │   ├── expenses/neon/route.ts  # Expenses CRUD (uses API helpers)
+│   │   ├── quick-links/neon/route.ts # Quick links CRUD (uses API helpers)
+│   │   ├── notes/neon/route.ts     # Notes CRUD (per-record, no helpers)
+│   │   ├── dashboard/route.ts      # Unified dashboard data endpoint
+│   │   ├── emails/                 # Email sending system
+│   │   ├── email-capture/          # Email subscriber capture
+│   │   └── notifications/          # Push notification system
+│   ├── todo/page.tsx          # Full-page todo view
+│   ├── sales/page.tsx         # Full-page sales view
+│   ├── calendar/page.tsx      # Full-page calendar view
+│   ├── notes/page.tsx         # Full-page notes view
+│   ├── quick-links/page.tsx   # Full-page quick links view
+│   └── expenses/page.tsx      # Full-page expenses view
 ├── components/
 │   ├── Dashboard/
-│   │   ├── DashboardLayout.tsx
-│   │   └── WidgetContainer.tsx  # Reusable widget wrapper
-│   ├── TodoList/
-│   │   ├── TodoWidget.tsx       # Dashboard widget version
-│   │   ├── TodoFullPage.tsx     # Full page version
-│   │   ├── TodoItem.tsx         # Individual todo item
-│   │   ├── TodoItemEditable.tsx # Inline editing component
-│   │   ├── TodoFilters.tsx      # Filter controls
-│   │   ├── AddTodoModal.tsx     # Add/Edit todo modal
-│   │   ├── CategoryOwnerEditModal.tsx  # Manage categories/owners
-│   │   ├── SubtaskList.tsx      # Expandable subtasks & notes
-│   │   └── SubtaskItem.tsx      # Individual subtask component
-│   ├── SalesList/
-│   │   ├── SalesFullPage.tsx    # Full page sales view
-│   │   ├── SalesListGrid.tsx    # Main sales grid container
-│   │   ├── SalesItem.tsx        # Individual sale item
-│   │   ├── SalesItemEditable.tsx # Inline editing for sales
-│   │   ├── SalesStatusDropdown.tsx # Status selector
-│   │   ├── DeliveryMethodDropdown.tsx # Delivery method selector
-│   │   ├── ProductDropdown.tsx  # Product selector with collections
-│   │   ├── CollectionProductEditModal.tsx # Manage collections/products
-│   │   ├── SaleSubtaskList.tsx  # Sale subtasks & notes
-│   │   └── SaleSubtaskItem.tsx  # Individual sale subtask
+│   │   ├── DashboardLayout.tsx    # Main dashboard grid
+│   │   └── WidgetContainer.tsx    # Shared widget wrapper (overlay/interactive modes)
+│   ├── TodoList/                  # Todo components
+│   ├── SalesList/                 # Sales components
+│   ├── Calendar/                  # Calendar components (month/week/day views)
+│   ├── Notes/                     # Notes components
+│   ├── QuickLinks/                # Quick links components
+│   ├── ExpensesList/              # Expenses components
+│   ├── Email/                     # Email management components
+│   ├── Mobile/                    # Mobile PWA components
+│   │   ├── Layout/                # Mobile layout, header, tab bar
+│   │   ├── Todo/                  # Mobile todo cards
+│   │   ├── Sales/                 # Mobile sales cards
+│   │   └── Calendar/              # Mobile calendar views
 │   └── UI/
-│       ├── Header.tsx            # Site header with nav
-│       └── Button.tsx            # Reusable button component
+│       ├── Header.tsx             # Site header with nav
+│       ├── Button.tsx             # Reusable button component
+│       ├── SubtaskItem.tsx        # Shared subtask component (used by Todo & Sales)
+│       ├── CustomDropdown.tsx     # Generic dropdown (uses useDropdown hook)
+│       ├── PriorityDropdown.tsx   # Priority selector (uses useDropdown hook)
+│       ├── StatusDropdown.tsx     # Status selector (uses useDropdown hook)
+│       └── ColorPicker.tsx        # Color picker component
+├── hooks/
+│   ├── useDropdown.ts         # Shared dropdown hook (portal/inline positioning, click-outside)
+│   ├── useInlineEdit.ts       # Shared inline edit hook (click-outside, Enter/Escape)
+│   ├── useIsMobile.ts         # Mobile detection
+│   ├── usePWA.ts              # PWA utilities
+│   └── useDashboardData.ts    # Dashboard data loading
 ├── lib/
-│   ├── store.ts                 # Zustand store for todos
-│   ├── salesStore.ts            # Zustand store for sales
-│   ├── types.ts                 # TypeScript interfaces for todos
-│   ├── salesTypes.ts            # TypeScript interfaces for sales
-│   ├── utils.ts                 # Utility functions
-│   └── db/
-│       ├── index.ts            # Neon database connection
-│       └── schema.ts           # Drizzle ORM schema (todos & sales)
-├── scripts/
-│   ├── migrate-data.ts         # Migrate JSON to Neon
-│   ├── push-schema.ts          # Create database tables
-│   └── seed-test-data.ts       # Seed test data
-├── data/
-│   └── todos.json              # Legacy file storage (fallback)
-├── drizzle.config.ts           # Drizzle ORM configuration
-├── Style/                       # Branding assets
-│   ├── STYLE_GUIDE.md          # Complete style guide
-│   └── fonts/                  # Neue Haas Grotesk fonts
+│   ├── createEntityStore.ts   # Zustand store factory (shared load/save/debounce)
+│   ├── loadingCoordinator.ts  # Request dedup & caching singleton
+│   ├── store.ts               # Todo store (uses createEntityStoreSlice)
+│   ├── salesStore.ts          # Sales store (uses createEntityStoreSlice)
+│   ├── calendarStore.ts       # Calendar store (uses createEntityStoreSlice)
+│   ├── expenseStore.ts        # Expenses store (uses createEntityStoreSlice)
+│   ├── quickLinksStore.ts     # Quick links store (uses createEntityStoreSlice)
+│   ├── notesStore.ts          # Notes store (per-note save, different pattern)
+│   ├── dashboardStore.ts      # Unified dashboard data management
+│   ├── api/
+│   │   └── helpers.ts         # Shared API route helpers (requireAuth, getDb, etc.)
+│   ├── db/
+│   │   ├── index.ts           # Neon database connection (singleton)
+│   │   └── schema.ts          # Drizzle ORM schema
+│   ├── types.ts               # Todo TypeScript interfaces
+│   ├── salesTypes.ts          # Sales TypeScript interfaces
+│   ├── calendarTypes.ts       # Calendar TypeScript interfaces
+│   ├── notesTypes.ts          # Notes TypeScript interfaces
+│   ├── quickLinksTypes.ts     # Quick links TypeScript interfaces
+│   ├── expenseTypes.ts        # Expense TypeScript interfaces
+│   └── utils.ts               # Utility functions
+├── scripts/                   # Database migration & seed scripts
+├── data/                      # JSON fallback storage
+├── tests/                     # Playwright E2E tests
+├── drizzle.config.ts          # Drizzle ORM configuration
+├── playwright.config.ts       # Playwright test configuration
+├── Style/                     # Branding assets
+│   ├── STYLE_GUIDE.md         # Complete style guide
+│   └── fonts/                 # Neue Haas Grotesk fonts
 └── public/
-    └── images/                  # Logo and assets
+    └── images/                # Logo and assets
 ```
 
 ## Site Map
 ```
-/                   # Dashboard home with todo widget and placeholder widgets
-├── /todo           # Full-page todo list view with advanced features
+/                   # Dashboard home with 5 widgets (Todo, Sales, Calendar, Notes, Quick Links)
+├── /todo           # Full-page todo list with drag-and-drop, filters, subtasks
 ├── /sales          # Full-page sales tracker with product management
+├── /calendar       # Full-page calendar (month/week/day views)
+├── /notes          # Full-page notes with deep link sharing
+├── /quick-links    # Full-page quick links with drag-and-drop
+├── /expenses       # Full-page expense tracker with tags
+├── /email          # Email subscriber database + email management
+├── /settings       # User settings, notifications, password change
+└── /login          # Authentication page
 ```
 
 ## Key Features
@@ -201,30 +228,30 @@ The application uses Neon PostgreSQL with multiple layers of data loss protectio
 5. **State-Based Flags**: `isLoading` and `hasLoadedFromServer` tracked in store state
 
 ```typescript
-// lib/store.ts - Protected storage system
-const apiStorage = {
-  getItem: async (name: string) => {
-    // Loads from Neon with proper state flags
-    const data = await fetch('/api/todos/neon')
-    return {
-      ...data,
-      isLoading: false,
-      hasLoadedFromServer: true,
-      lastSaveTime: Date.now()
-    }
-  },
-  setItem: async (name: string, value: string) => {
-    // Multiple safety checks before saving
-    if (state.isLoading) return // Don't save while loading
-    if (!state.hasLoadedFromServer) return // Don't save before initial load
-    if (isEmpty(state) && state.lastSaveTime > 0) return // Block empty saves
-    
-    // Debounced save to Neon (1 second delay)
-    clearTimeout(saveTimer)
-    saveTimer = setTimeout(() => saveToDB(), 1000)
-  }
-}
+// lib/createEntityStore.ts - Shared store factory
+const loadSave = createEntityStoreSlice<MyStore>({
+  coordinatorKey: 'my-data',       // dedup key for loadingCoordinator
+  endpoint: '/api/my-entity/neon', // API route
+  debounceMs: 5000,                // save debounce delay
+  parseResponse: (data, state) => ({ /* map API data to store state */ }),
+  serializeState: (state) => ({ /* map store state to POST body */ }),
+  afterLoad: (get, set) => { /* optional: create defaults, trigger follow-ups */ },
+  afterSave: () => { /* optional: clear caches */ },
+})
+
+// Usage in store:
+const useMyStore = create<MyStore>((set, get) => ({
+  ...loadSave(set, get),  // provides loadFromServer, saveToServer, isLoading, hasLoadedFromServer
+  // entity-specific state & actions...
+}))
 ```
+
+**Protection mechanisms built into the factory:**
+1. Won't save while `isLoading` is true
+2. Won't save before initial `loadFromServer` completes
+3. Debounced saves (default 5s) prevent rapid successive writes
+4. Auth redirect on 401 responses
+5. Empty state guard on API routes blocks wiping existing data
 
 ### Database Schema (Neon PostgreSQL)
 ```sql
@@ -272,10 +299,13 @@ useEffect(() => {
 ```
 
 ### State Management Pattern
-Zustand store with persistence:
+Zustand 5 stores using a shared factory (`createEntityStoreSlice`):
+- **Store Factory** (`lib/createEntityStore.ts`): Provides `loadFromServer`, `saveToServer`, debounce, loading guards, and auth redirect. Each store passes config for its endpoint, parser, serializer, and optional hooks (`afterLoad`, `afterSave`).
+- **Loading Coordinator** (`lib/loadingCoordinator.ts`): Deduplicates concurrent API calls and caches responses. All stores use this to prevent connection storms on dashboard load.
+- 5 stores use the factory: todos, sales, calendar, expenses, quick links
+- 1 store uses a different pattern: notes (per-note save)
 - Categories and owners are stored with color associations
-- Todos reference categories/owners by name
-- Filters and sorting preferences persist across sessions
+- Filters and sorting preferences persist in store state
 - Store methods for subtasks: `addSubtask`, `updateSubtask`, `deleteSubtask`, `toggleSubtask`
 - Store method for notes: `updateNotes`
 
@@ -319,20 +349,51 @@ The project is configured for Vercel deployment with Neon:
 DATABASE_URL=postgresql://user:pass@host/dbname?sslmode=require
 ```
 
-## Future Enhancements (Placeholders Exist)
-- **Notes Widget**: Quick notes and documentation
-- **Events Widget**: Calendar and event management
-- **Financial Widget**: Revenue and expense tracking
-- **Quick Stats**: User metrics and analytics
+## Implemented Features (All Widget Placeholders Filled)
+- **Notes**: Full CRUD with deep link sharing and per-user isolation
+- **Calendar**: Month/week/day views with event types, desktop + mobile
+- **Expenses**: Expense tracking with tags and inline editing
+- **Quick Links**: Drag-and-drop link management with search/sort
+- **Email**: Subscriber database with CSV export + email sending system
+- **Notifications**: Push notifications (browser + iOS PWA) with real-time bell
+
+## Shared Hooks & Infrastructure
+
+### `hooks/useDropdown.ts`
+Shared hook for all 10 dropdown components. Two modes:
+- **Portal mode** (default): Fixed positioning with `buttonRef`/`dropdownRef`. Handles scroll/resize repositioning.
+- **Inline mode**: Click-outside via `containerRef` wrapper.
+Returns: `{ isOpen, open, close, toggle, buttonRef, dropdownRef, containerRef, position }`
+
+### `hooks/useInlineEdit.ts`
+Shared hook for 4 editable row components (TodoItemEditable, SalesItemEditable, ExpenseRowEditable, QuickLinkItemEditable).
+- Click-outside detection (100ms delay, dropdown-portal exclusion)
+- Enter to submit, Escape to cancel
+Returns: `{ containerRef, handleKeyDown }`
+
+### `lib/api/helpers.ts`
+Shared API route helpers used by 4 authenticated entity routes:
+- `requireAuth()` - Returns session or 401 response
+- `getDb()` - Returns db instance or null
+- `deleteByIds()` - Batch delete by ID array
+- `readJsonFallback()` / `writeJsonFallback()` - JSON file fallback
+- `guardEmptyState()` - Prevents wiping data with empty saves
+
+### `components/Dashboard/WidgetContainer.tsx`
+Shared glassmorphism widget wrapper for all 5 dashboard widgets:
+- **overlay mode** (default): Entire widget clickable, navigates to full page
+- **interactive mode**: Inner content remains interactive (e.g., Calendar widget)
 
 ## Known Considerations
-1. **Hydration**: TodoWidget uses `isHydrated` state to prevent SSR/CSR mismatches
+1. **Hydration**: Widgets use `isHydrated` state to prevent SSR/CSR mismatches
 2. **Color Management**: Colors are stored in both store.ts and CategoryOwnerEditModal
 3. **Data Persistence**: Uses Neon PostgreSQL with automatic JSON fallback
 4. **Font Loading**: Custom fonts loaded via local files in Style/fonts
 5. **Database Transactions**: Neon HTTP driver doesn't support transactions
-6. **Dropdown Portals**: Uses React portals to escape container overflow
+6. **Dropdown Portals**: All dropdowns use `useDropdown` hook with React portals
 7. **Priority-based Colors**: Task backgrounds use priority colors instead of category
+8. **Next.js 15 Async Params**: Dynamic route `params` are Promises that must be awaited
+9. **React 19 RefObject**: `RefObject<T>` now includes `null` in the type
 
 ## Component Communication
 - **Props Flow**: Minimal prop drilling, most state in Zustand
@@ -341,10 +402,10 @@ DATABASE_URL=postgresql://user:pass@host/dbname?sslmode=require
 - **Auto-save Pattern**: Changes save immediately without confirmation
 
 ## Testing Approach
-Currently no tests implemented. For future testing:
-- Unit tests for store functions
-- Component tests for TodoItem interactions
-- E2E tests for todo CRUD operations
+- **E2E Tests**: Playwright test suite in `tests/` directory
+- **Config**: `playwright.config.ts` at project root
+- **Run**: `npx playwright test` (requires `npm run dev` running)
+- Coverage: smoke tests for auth, dashboard navigation, and page loading
 
 ## Performance Optimizations
 - Lazy loading for modals
