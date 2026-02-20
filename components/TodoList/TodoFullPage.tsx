@@ -12,7 +12,7 @@ export default function TodoFullPage() {
     loadFromServer().then(() => {
       setIsHydrated(true)
     })
-  }, []) // Empty dependency array - only run once on mount
+  }, [loadFromServer])
   
   // Calculate open tasks count
   const openTasksCount = isHydrated ? todos.filter(t => t.status === 'not_started' || t.status === 'in_progress').length : 0

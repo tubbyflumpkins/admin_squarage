@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { Trash2, Download, Mail, Users, TrendingUp, CheckCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -34,29 +34,6 @@ export default function DatabaseTab() {
   const [isLoading, setIsLoading] = useState(true)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchSubscribers()
-  }, [])
-
-  const fetchSubscribers = async () => {
-    try {
-      const response = await fetch('/api/email-capture/admin/list')
-      if (!response.ok) {
-        throw new Error('Failed to fetch subscribers')
-      }
-      const data = await response.json()
-
-      if (data.success && data.data) {
-        setSubscribers(data.data)
-        calculateStats(data.data)
-      }
-    } catch (error) {
-      console.error('Error fetching subscribers:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const calculateStats = (subs: EmailSubscriber[]) => {
     const total = subs.length
 
@@ -77,6 +54,29 @@ export default function DatabaseTab() {
       consentRate
     })
   }
+
+  const fetchSubscribers = useCallback(async () => {
+    try {
+      const response = await fetch('/api/email-capture/admin/list')
+      if (!response.ok) {
+        throw new Error('Failed to fetch subscribers')
+      }
+      const data = await response.json()
+
+      if (data.success && data.data) {
+        setSubscribers(data.data)
+        calculateStats(data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching subscribers:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchSubscribers()
+  }, [fetchSubscribers])
 
   const handleDelete = async (id: string) => {
     if (deleteConfirm !== id) {

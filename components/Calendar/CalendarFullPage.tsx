@@ -31,7 +31,7 @@ export default function CalendarFullPage() {
     loadFromServer().then(() => {
       setIsHydrated(true)
     })
-  }, []) // Empty dependency array - only run once on mount
+  }, [loadFromServer])
 
   const handleAddEvent = (date?: Date) => {
     setSelectedEvent(null)
