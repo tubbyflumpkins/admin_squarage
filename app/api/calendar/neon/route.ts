@@ -6,11 +6,8 @@ import { eq, sql } from 'drizzle-orm'
 // GET: Fetch all calendar data
 export async function GET() {
   try {
-    console.log('Fetching calendar data from database...')
-    
     // Check if database is configured
     if (!isDatabaseConfigured() || !db) {
-      console.log('Database not configured, returning empty calendar data')
       return NextResponse.json({
         events: [],
         calendarTypes: [],
@@ -26,8 +23,6 @@ export async function GET() {
     
     // Fetch all reminders
     const reminders = await db.select().from(eventReminders)
-    
-    console.log(`Found ${events.length} events, ${types.length} calendar types, ${reminders.length} reminders`)
     
     return NextResponse.json({
       events,
@@ -50,12 +45,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
-    console.log('Saving calendar data to database...')
-    console.log(`Received ${data.events?.length || 0} events, ${data.calendarTypes?.length || 0} calendar types, ${data.reminders?.length || 0} reminders`)
-    
+
     // Check if database is configured
     if (!isDatabaseConfigured() || !db) {
-      console.log('Database not configured, cannot save calendar data')
       return NextResponse.json({ error: 'Database not configured' }, { status: 503 })
     }
     
@@ -106,9 +98,6 @@ export async function POST(request: NextRequest) {
             .delete(calendarTypes)
             .where(sql`${calendarTypes.id} NOT IN (${sql.join(typeIds.map((id: string) => sql`${id}`), sql`, `)})`)
         }
-      } else if (!hasExistingData) {
-        // If no existing data and no new types, that's okay for initial setup
-        console.log('No calendar types to save (initial setup)')
       }
       
       // UPSERT Events
@@ -157,11 +146,6 @@ export async function POST(request: NextRequest) {
           // If no events in the data, delete all events
           await db.delete(calendarEvents).where(sql`1=1`)
         }
-      } else {
-        // Delete all events if none provided (but only if we're not blocking empty updates)
-        if (!hasExistingData) {
-          console.log('No events to save (initial setup)')
-        }
       }
       
       // UPSERT Reminders
@@ -195,7 +179,6 @@ export async function POST(request: NextRequest) {
         await db.delete(eventReminders).where(sql`1=1`)
       }
       
-      console.log('Calendar data saved successfully')
       return NextResponse.json({ success: true })
       
     } catch (dbError) {
