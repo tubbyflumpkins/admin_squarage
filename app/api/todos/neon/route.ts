@@ -1,58 +1,33 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { db, isDatabaseConfigured } from '@/lib/db'
+import { db } from '@/lib/db'
 import { todos, categories, owners, subtasks, users } from '@/lib/db/schema'
-import { eq, desc, sql as drizzleSql, or } from 'drizzle-orm'
+import { eq, desc, sql as drizzleSql } from 'drizzle-orm'
 import type { Todo as StoreTodo, Subtask as StoreSubtask } from '@/lib/types'
 import { createNotification } from '@/lib/notifications'
+import {
+  requireAuth,
+  getDb,
+  deleteByIds,
+  readJsonFallback,
+  writeJsonFallback,
+  guardEmptyState,
+} from '@/lib/api/helpers'
 
-// Fallback to JSON file if database is not configured
-async function fallbackToJsonFile() {
-  const fs = await import('fs/promises')
-  const path = await import('path')
-  const DATA_FILE = path.join(process.cwd(), 'data', 'todos.json')
-  
-  try {
-    const data = await fs.readFile(DATA_FILE, 'utf-8')
-    return JSON.parse(data)
-  } catch {
-    return {
-      todos: [],
-      categories: [],
-      owners: []
-    }
-  }
-}
+const EMPTY_STATE = { todos: [], categories: [], owners: [] }
 
 export async function GET() {
-  // Check authentication
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
+  const session = auth
 
   try {
-    // Log environment info for debugging
-    console.log('GET /api/todos/neon - Environment:', {
-      NODE_ENV: process.env.NODE_ENV,
-      DATABASE_URL_EXISTS: !!process.env.DATABASE_URL,
-      DATABASE_URL_LENGTH: process.env.DATABASE_URL?.length || 0,
-      IS_VERCEL: !!process.env.VERCEL,
-      VERCEL_ENV: process.env.VERCEL_ENV
-    })
-    
-    // Check if database is configured
-    if (!isDatabaseConfigured() || !db) {
-      console.log('Database not configured, falling back to JSON file')
-      const data = await fallbackToJsonFile()
+    if (!getDb()) {
+      const data = await readJsonFallback('todos.json', EMPTY_STATE)
       return NextResponse.json(data)
     }
 
-    console.log('Database is configured, fetching data...')
-    
     // Fetch all users for the owner dropdown
-    const dbUsers = await db.select().from(users)
+    const dbUsers = await db!.select().from(users)
     
     // Create owner list from users with consistent colors
     const userColors: Record<string, string> = {
@@ -72,9 +47,9 @@ export async function GET() {
     
     // Fetch all todos (admin users can see all todos)
     const [dbTodos, dbCategories, dbSubtasks] = await Promise.all([
-      db.select().from(todos).orderBy(desc(todos.createdAt)),
-      db.select().from(categories),
-      db.select().from(subtasks)
+      db!.select().from(todos).orderBy(desc(todos.createdAt)),
+      db!.select().from(categories),
+      db!.select().from(subtasks)
     ])
 
     // Group subtasks by todo ID
@@ -112,67 +87,38 @@ export async function GET() {
       owners: dbOwners
     }
     
-    console.log('Data fetched successfully:', {
-      todos: transformedTodos.length,
-      categories: dbCategories.length,
-      owners: dbOwners.length
-    })
-
     return NextResponse.json(response)
   } catch (error) {
     console.error('Error fetching data from database:', error)
-    // Fallback to JSON file on error
-    const data = await fallbackToJsonFile()
+    const data = await readJsonFallback('todos.json', EMPTY_STATE)
     return NextResponse.json(data)
   }
 }
 
 export async function POST(request: Request) {
-  // Check authentication
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
+  const session = auth
 
   try {
     const data = await request.json()
-    
-    // CRITICAL VALIDATION: Never accept empty state that would delete all data
+
     if (!data || typeof data !== 'object') {
-      console.error('Invalid data format received')
       return NextResponse.json({ error: 'Invalid data format' }, { status: 400 })
     }
-    
-    // Check if this would result in deleting all data
-    const hasAnyData = (data.todos && data.todos.length > 0) || 
-                       (data.categories && data.categories.length > 0) || 
-                       (data.owners && data.owners.length > 0)
-    
-    if (!hasAnyData) {
-      // Fetch current data to check if database has existing data
-      if (isDatabaseConfigured() && db) {
-        const [existingTodos] = await Promise.all([
-          db.select().from(todos).limit(1)
-        ])
-        
-        if (existingTodos.length > 0) {
-          console.error('BLOCKED: Attempted to delete all data with empty state')
-          return NextResponse.json({ 
-            error: 'Cannot save empty state when database contains data', 
-            blocked: true 
-          }, { status: 400 })
-        }
-      }
-    }
-    
-    // Check if database is configured
-    if (!isDatabaseConfigured() || !db) {
-      console.log('Database not configured, falling back to JSON file')
-      // Fall back to file system
-      const fs = await import('fs/promises')
-      const path = await import('path')
-      const DATA_FILE = path.join(process.cwd(), 'data', 'todos.json')
-      await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2))
+
+    const hasAnyData = (data.todos?.length > 0) ||
+                       (data.categories?.length > 0) ||
+                       (data.owners?.length > 0)
+
+    const blocked = await guardEmptyState(hasAnyData, async () => {
+      const rows = await db!.select().from(todos).limit(1)
+      return rows.length > 0
+    })
+    if (blocked) return blocked
+
+    if (!getDb()) {
+      await writeJsonFallback('todos.json', data)
       return NextResponse.json({ success: true })
     }
 
@@ -181,10 +127,10 @@ export async function POST(request: Request) {
     
     // Step 1: Get all existing IDs
     const [existingTodos, existingCategories, existingOwners, existingSubtasks] = await Promise.all([
-      db.select({ id: todos.id }).from(todos),
-      db.select({ id: categories.id }).from(categories),
-      db.select({ id: owners.id }).from(owners),
-      db.select({ id: subtasks.id }).from(subtasks)
+      db!.select({ id: todos.id }).from(todos),
+      db!.select({ id: categories.id }).from(categories),
+      db!.select({ id: owners.id }).from(owners),
+      db!.select({ id: subtasks.id }).from(subtasks)
     ])
     
     const existingTodoIds = new Set(existingTodos.map(t => t.id))
@@ -217,26 +163,10 @@ export async function POST(request: Request) {
     const subtaskIdsToDelete = Array.from(existingSubtaskIds).filter(id => !incomingSubtaskIds.has(id))
     
     // Delete removed items
-    if (subtaskIdsToDelete.length > 0) {
-      await db.delete(subtasks).where(
-        drizzleSql`${subtasks.id} IN (${drizzleSql.join(subtaskIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
-      )
-    }
-    if (todoIdsToDelete.length > 0) {
-      await db.delete(todos).where(
-        drizzleSql`${todos.id} IN (${drizzleSql.join(todoIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
-      )
-    }
-    if (categoryIdsToDelete.length > 0) {
-      await db.delete(categories).where(
-        drizzleSql`${categories.id} IN (${drizzleSql.join(categoryIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
-      )
-    }
-    if (ownerIdsToDelete.length > 0) {
-      await db.delete(owners).where(
-        drizzleSql`${owners.id} IN (${drizzleSql.join(ownerIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
-      )
-    }
+    await deleteByIds(subtasks, subtasks.id, subtaskIdsToDelete)
+    await deleteByIds(todos, todos.id, todoIdsToDelete)
+    await deleteByIds(categories, categories.id, categoryIdsToDelete)
+    await deleteByIds(owners, owners.id, ownerIdsToDelete)
     
     // Step 4: UPSERT categories in parallel batches
     if (data.categories && data.categories.length > 0) {
@@ -246,7 +176,7 @@ export async function POST(request: Request) {
         if (existingCategoryIds.has(category.id)) {
           // Update existing
           categoryPromises.push(
-            db.update(categories)
+            db!.update(categories)
               .set({
                 name: category.name,
                 color: category.color
@@ -262,7 +192,7 @@ export async function POST(request: Request) {
             createdAt: category.createdAt ? new Date(category.createdAt) : new Date()
           }
           categoryPromises.push(
-            db.insert(categories).values(categoryValues)
+            db!.insert(categories).values(categoryValues)
           )
         }
       }
@@ -278,7 +208,7 @@ export async function POST(request: Request) {
         if (existingOwnerIds.has(owner.id)) {
           // Update existing
           ownerPromises.push(
-            db.update(owners)
+            db!.update(owners)
               .set({
                 name: owner.name,
                 color: owner.color
@@ -294,7 +224,7 @@ export async function POST(request: Request) {
             createdAt: owner.createdAt ? new Date(owner.createdAt) : new Date()
           }
           ownerPromises.push(
-            db.insert(owners).values(ownerValues)
+            db!.insert(owners).values(ownerValues)
           )
         }
       }
@@ -313,7 +243,7 @@ export async function POST(request: Request) {
     // Get existing todos to track changes
     const existingTodosMap = new Map()
     if (existingTodoIds.size > 0) {
-      const existingTodosData = await db
+      const existingTodosData = await db!
         .select()
         .from(todos)
         .where(drizzleSql`${todos.id} IN (${drizzleSql.join(Array.from(existingTodoIds).map(id => drizzleSql`${id}`), drizzleSql`, `)})`)
@@ -380,7 +310,7 @@ export async function POST(request: Request) {
           
           // Create promise for todo upsert
           const todoPromise = existingTodoIds.has(todo.id)
-            ? db.update(todos)
+            ? db!.update(todos)
                 .set({
                   title: todoValues.title,
                   category: todoValues.category,
@@ -393,14 +323,14 @@ export async function POST(request: Request) {
                   updatedAt: todoValues.updatedAt
                 })
                 .where(eq(todos.id, todo.id))
-            : db.insert(todos).values(todoValues)
+            : db!.insert(todos).values(todoValues)
           
           todoPromises.push(todoPromise)
           
           // Handle subtasks for this todo
           if (todoSubtasks && todoSubtasks.length > 0) {
             // First get existing subtasks (this needs to be sequential)
-            const existingTodoSubtasks = await db.select({ id: subtasks.id })
+            const existingTodoSubtasks = await db!.select({ id: subtasks.id })
               .from(subtasks)
               .where(eq(subtasks.todoId, todo.id))
             const existingTodoSubtaskIds = new Set(existingTodoSubtasks.map(s => s.id))
@@ -440,7 +370,7 @@ export async function POST(request: Request) {
     // Send notifications for tracked changes
     if (notificationTriggers.length > 0) {
       // Get all users for owner lookups
-      const allUsers = await db.select().from(users)
+      const allUsers = await db!.select().from(users)
       const userMap = new Map(allUsers.map(u => [u.name, u]))
       const userIdMap = new Map(allUsers.map(u => [u.id, u]))
       
