@@ -428,9 +428,20 @@ Shared glassmorphism widget wrapper for all 5 dashboard widgets:
 
 ---
 
-This dashboard is production-ready and deployed on Vercel. The todo list is fully functional with advanced features like drag-and-drop, color-coded categories, subtasks with notes, and persistent API-based storage.
+This dashboard is production-ready and deployed on Vercel with full CRUD for todos, sales, calendar, notes, quick links, and expenses.
 
 ## Recent Major Updates
+
+### 2026 Streamline & Modernize (February 2026)
+- **Shared Hooks**: `useDropdown` (10 dropdowns), `useInlineEdit` (4 editable components)
+- **Store Factory**: `createEntityStoreSlice` eliminates load/save boilerplate across 5 stores
+- **API Helpers**: `lib/api/helpers.ts` with `requireAuth`, `getDb`, `guardEmptyState`, etc.
+- **Widget Consolidation**: All 5 dashboard widgets use shared `WidgetContainer`
+- **Shared SubtaskItem**: Single component used by both Todo and Sales
+- **Next.js 15 + React 19 + Zustand 5**: Full dependency upgrade from Next.js 14/React 18/Zustand 4
+- **Zero-warning build**: All ESLint warnings fixed
+- **Playwright E2E tests**: Smoke test suite for auth and navigation
+- See `docs/ARCHITECTURE.md` for detailed architecture documentation
 
 ### Subtask & Notes System (August 2025)
 - Added expandable subtask system with lightweight checkbox items
