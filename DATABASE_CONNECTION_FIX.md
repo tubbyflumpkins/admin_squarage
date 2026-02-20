@@ -48,11 +48,11 @@ Excessive Neon database connections causing compute usage spikes and hitting con
 - Updates all individual stores (Todo, Sales, Calendar, QuickLinks) at once
 - Prevents individual widget loads
 
-### 5. Updated Store Loading
-**Files: `/lib/store.ts`, `/lib/salesStore.ts`, `/lib/calendarStore.ts`, `/lib/quickLinksStore.ts`**
-- All stores now use LoadingCoordinator
-- Prevents concurrent loads of same data
-- Shares cached responses between components
+### 5. Updated Store Loading (Now via Store Factory)
+**File: `/lib/createEntityStore.ts`** (shared by all entity stores)
+- All stores use `createEntityStoreSlice` factory which integrates LoadingCoordinator
+- Factory handles `coordinatedLoad` calls with dedup keys
+- Individual stores (`store.ts`, `salesStore.ts`, `calendarStore.ts`, `quickLinksStore.ts`, `expenseStore.ts`) define config only
 
 ### 6. Widget Component Updates
 - TodoListGrid, SalesListGrid, CalendarWidget, QuickLinksGridReadOnly

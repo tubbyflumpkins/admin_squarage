@@ -1,10 +1,12 @@
 # Mobile PWA Implementation - Squarage Admin Dashboard
 
+> **NOTE**: This file is a duplicate of `/mobile.md` at the project root. See the root file for the canonical version. This file will be removed.
+
 ## Overview
 Complete mobile Progressive Web App (PWA) implementation for the Squarage Admin Dashboard, featuring native-like interactions, offline capabilities, and optimized mobile UI/UX.
 
 ## Tech Stack
-- **Framework**: Next.js 14 with App Router
+- **Framework**: Next.js 15 with App Router
 - **State Management**: Zustand with API persistence
 - **Styling**: Tailwind CSS with glassmorphism design
 - **Touch Interactions**: Native touch events with pull-to-refresh
