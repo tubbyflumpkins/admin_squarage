@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import useSalesStore from '@/lib/salesStore'
+import { useDropdown } from '@/hooks/useDropdown'
 
 interface ProductDropdownProps {
   value?: string
@@ -12,31 +12,19 @@ interface ProductDropdownProps {
 }
 
 export default function ProductDropdown({ value, onChange, compact = false, selectedColor }: ProductDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  
+  const { isOpen, toggle, close, containerRef } = useDropdown({ mode: 'inline' })
+
   const { products, collections } = useSalesStore()
-  
+
   // Get selected product and its collection
   const selectedProduct = products.find(p => p.id === value)
-  const selectedCollection = selectedProduct 
+  const selectedCollection = selectedProduct
     ? collections.find(c => c.id === selectedProduct.collectionId)
     : null
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const handleSelect = (productId: string | undefined) => {
     onChange(productId)
-    setIsOpen(false)
+    close()
   }
 
   // Group products by collection
@@ -46,15 +34,15 @@ export default function ProductDropdown({ value, onChange, compact = false, sele
   })).filter(group => group.products.length > 0)
 
   return (
-    <div className="relative w-full" ref={dropdownRef}>
+    <div className="relative w-full" ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => toggle()}
         className={cn(
           "flex w-full items-center justify-center gap-1 rounded font-medium hover:opacity-80 transition-all whitespace-nowrap",
           compact ? "px-1.5 py-0.5 text-xs" : "px-2 py-1 text-sm",
           !selectedCollection && "bg-gray-100 text-gray-700",
-          selectedCollection && (selectedColor === '#FFFFFF' || selectedCollection.color === '#FFFFFF') ? "text-black" : 
+          selectedCollection && (selectedColor === '#FFFFFF' || selectedCollection.color === '#FFFFFF') ? "text-black" :
           selectedCollection ? "text-white" : ""
         )}
         style={{
@@ -75,7 +63,7 @@ export default function ProductDropdown({ value, onChange, compact = false, sele
             <div className="mb-3">
               <h3 className="text-xs font-bold text-squarage-black drop-shadow-sm">Select Product</h3>
             </div>
-            
+
             {/* Option to clear selection */}
             <button
               onClick={() => handleSelect(undefined)}
@@ -89,7 +77,7 @@ export default function ProductDropdown({ value, onChange, compact = false, sele
             >
               <span className="text-gray-600">No Product</span>
             </button>
-            
+
             {/* Collections Grid */}
             <div className="grid grid-cols-3 gap-3 max-h-80 overflow-y-auto">
               {productsByCollection.map(({ collection, products }) => (
@@ -97,14 +85,14 @@ export default function ProductDropdown({ value, onChange, compact = false, sele
                   {/* Collection Header (not clickable in product selector) */}
                   <div
                     className="w-full px-3 py-1.5 text-xs font-bold text-white rounded-xl shadow-md"
-                    style={{ 
+                    style={{
                       backgroundColor: collection.color,
                       backdropFilter: 'blur(8px)'
                     }}
                   >
                     {collection.name}
                   </div>
-                  
+
                   {/* Products in Collection */}
                   <div className="space-y-1">
                     {products.map(product => (
@@ -118,7 +106,7 @@ export default function ProductDropdown({ value, onChange, compact = false, sele
                           "transition-all duration-150 transform",
                           value === product.id && "ring-2 ring-squarage-green bg-squarage-green/10"
                         )}
-                        style={{ 
+                        style={{
                           borderColor: `${collection.color}40`
                         }}
                       >
@@ -129,7 +117,7 @@ export default function ProductDropdown({ value, onChange, compact = false, sele
                 </div>
               ))}
             </div>
-            
+
             {productsByCollection.length === 0 && (
               <div className="text-center py-4 text-xs text-gray-500">
                 No products available. Add products in Settings.
