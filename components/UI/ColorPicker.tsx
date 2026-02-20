@@ -8,7 +8,7 @@ interface ColorPickerProps {
   onClose: () => void
   onSelect: (color: string) => void
   currentColor?: string
-  triggerRef: React.RefObject<HTMLElement>
+  triggerRef: React.RefObject<HTMLElement | null>
 }
 
 // Color palette with bold, pastel, and neutral colors
