@@ -6,6 +6,7 @@ import { Trash2 } from 'lucide-react'
 import { Sale, SaleStatus, DeliveryMethod } from '@/lib/salesTypes'
 import { cn } from '@/lib/utils'
 import useSalesStore from '@/lib/salesStore'
+import { useInlineEdit } from '@/hooks/useInlineEdit'
 import SalesStatusDropdown from './SalesStatusDropdown'
 import DeliveryMethodDropdown from './DeliveryMethodDropdown'
 import ProductDropdown from './ProductDropdown'
@@ -21,7 +22,6 @@ interface SalesItemEditableProps {
 
 export default function SalesItemEditable({ sale, isNew = false, onSave, onCancel }: SalesItemEditableProps) {
   const orderRef = useRef<HTMLInputElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
   const products = useSalesStore(state => state.products)
   
   const [formData, setFormData] = useState({
@@ -62,40 +62,16 @@ export default function SalesItemEditable({ sale, isNew = false, onSave, onCance
     }
   }, [formData, onSave, onCancel, isNew, isSaleBlank, sale])
 
+  const { containerRef, handleKeyDown } = useInlineEdit({
+    onSubmit: handleSubmit,
+    onCancel,
+  })
+
   useEffect(() => {
     if (isNew && orderRef.current) {
       orderRef.current.focus()
     }
   }, [isNew])
-
-  // Handle click outside to save
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        handleSubmit()
-      }
-    }
-
-    // Add event listener with a slight delay to avoid immediate trigger
-    const timeoutId = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside)
-    }, 100)
-
-    return () => {
-      clearTimeout(timeoutId)
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [handleSubmit])
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
-    } else if (e.key === 'Escape') {
-      // Always cancel on Escape (will auto-delete if blank)
-      onCancel()
-    }
-  }
 
   return (
     <div 
