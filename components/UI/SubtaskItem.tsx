@@ -2,11 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Trash2 } from 'lucide-react'
-import { Subtask } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface SubtaskItemProps {
-  subtask: Subtask
+  subtask: { id: string; text: string; completed: boolean }
   onToggle: () => void
   onUpdate: (text: string) => void
   onDelete: () => void
@@ -44,18 +43,19 @@ export default function SubtaskItem({ subtask, onToggle, onUpdate, onDelete, bac
   }
 
   return (
-    <div 
+    <div
       className={cn(
         "group flex items-center gap-2 px-4 py-1.5 transition-all hover:brightness-95",
         subtask.completed && "opacity-60"
-      )}>
+      )}
+    >
       <input
         type="checkbox"
         checked={subtask.completed}
         onChange={onToggle}
         className="w-4 h-4 rounded border-gray-300 text-squarage-green focus:ring-squarage-green focus:ring-offset-0"
       />
-      
+
       {isEditing ? (
         <input
           ref={inputRef}
@@ -77,7 +77,7 @@ export default function SubtaskItem({ subtask, onToggle, onUpdate, onDelete, bac
           {subtask.text}
         </span>
       )}
-      
+
       <button
         onClick={onDelete}
         className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all"
