@@ -49,24 +49,86 @@ const defaultCalendarTypes: Omit<CalendarType, 'id' | 'createdAt'>[] = [
   { name: 'Events', color: '#F7901E' },
 ]
 
+/** Duration of the event in milliseconds (so recurring instances keep the same length). */
+const eventDurationMs = (event: CalendarEvent): number =>
+  new Date(event.endTime).getTime() - new Date(event.startTime).getTime()
+
+/** Check if a recurring pattern matches a specific date relative to the event's start. */
+const recurringMatchesDate = (event: CalendarEvent, checkDate: Date): boolean => {
+  const pattern = event.recurringPattern
+  if (!pattern || pattern === 'none') return false
+
+  const start = new Date(event.startTime)
+  const check = new Date(checkDate)
+
+  // Recurring end date boundary
+  if (event.recurringEndDate && check > new Date(event.recurringEndDate)) return false
+  // Only future occurrences (not before the original)
+  if (check < new Date(start.getFullYear(), start.getMonth(), start.getDate())) return false
+
+  if (pattern === 'daily') return true
+
+  if (pattern === 'weekly') {
+    return check.getDay() === start.getDay()
+  }
+
+  if (pattern === 'monthly') {
+    return check.getDate() === start.getDate()
+  }
+
+  if (pattern === 'yearly') {
+    return check.getDate() === start.getDate() && check.getMonth() === start.getMonth()
+  }
+
+  return false
+}
+
 const eventOccursOnDate = (event: CalendarEvent, date: Date): boolean => {
   const eventStart = new Date(event.startTime)
   const eventEnd = new Date(event.endTime)
   const checkDate = new Date(date)
-  eventStart.setHours(0, 0, 0, 0)
-  eventEnd.setHours(23, 59, 59, 999)
-  checkDate.setHours(12, 0, 0, 0)
-  return checkDate >= eventStart && checkDate <= eventEnd
+
+  // Normalize for day-level comparison
+  const startDay = new Date(eventStart)
+  startDay.setHours(0, 0, 0, 0)
+  const endDay = new Date(eventEnd)
+  endDay.setHours(23, 59, 59, 999)
+  const checkDay = new Date(checkDate)
+  checkDay.setHours(12, 0, 0, 0)
+
+  // Original occurrence
+  if (checkDay >= startDay && checkDay <= endDay) return true
+
+  // Recurring occurrences
+  return recurringMatchesDate(event, checkDate)
 }
 
 const eventInDateRange = (event: CalendarEvent, startDate: Date, endDate: Date): boolean => {
   const eventStart = new Date(event.startTime)
   const eventEnd = new Date(event.endTime)
-  return (
+
+  // Original occurrence overlaps range
+  if (
     (eventStart >= startDate && eventStart <= endDate) ||
     (eventEnd >= startDate && eventEnd <= endDate) ||
     (eventStart <= startDate && eventEnd >= endDate)
-  )
+  ) return true
+
+  // Check recurring occurrences within the range
+  const pattern = event.recurringPattern
+  if (!pattern || pattern === 'none') return false
+
+  const current = new Date(startDate)
+  current.setHours(0, 0, 0, 0)
+  const rangeEnd = new Date(endDate)
+  rangeEnd.setHours(23, 59, 59, 999)
+
+  while (current <= rangeEnd) {
+    if (recurringMatchesDate(event, current)) return true
+    current.setDate(current.getDate() + 1)
+  }
+
+  return false
 }
 
 const loadSave = createEntityStoreSlice<CalendarStore>({
