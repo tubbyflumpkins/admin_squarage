@@ -3,8 +3,8 @@
 ## For Claude (or any developer) setting this up on a new computer:
 
 ### Prerequisites
-- Node.js 18+ installed
-- npm or yarn installed
+- Node.js 18.18+ installed
+- npm installed
 - Git installed
 
 ### Step-by-Step Setup
@@ -67,7 +67,7 @@
 - Clear node_modules and reinstall: `rm -rf node_modules && npm install`
 
 ### Project Structure Overview
-- `/app` - Next.js 14 app router pages and API routes
+- `/app` - Next.js 15 app router pages and API routes
 - `/components` - React components
 - `/lib` - Utilities, database connection, stores
 - `/lib/db/schema.ts` - Database schema definition

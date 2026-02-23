@@ -91,6 +91,17 @@ backdrop-filter: blur(8px);   /* backdrop-blur-sm */
 
 ## Component Patterns
 
+### WidgetContainer (Canonical Glass Wrapper)
+Use `components/Dashboard/WidgetContainer.tsx` as the canonical glass morphism wrapper for dashboard widgets. It provides consistent styling and two interaction modes:
+- **overlay** (default): Entire widget is clickable, navigates to full page
+- **interactive**: Inner content remains interactive (e.g., Calendar)
+
+```tsx
+<WidgetContainer href="/todo">
+  <TodoWidget />
+</WidgetContainer>
+```
+
 ### Glass Containers
 ```css
 /* Main container */

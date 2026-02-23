@@ -15,8 +15,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import useTodoStore from '@/lib/store'
 import TodoItem from './TodoItem'
-import { Todo, SortBy, CategoryOption, OwnerOption } from '@/lib/types'
+import { Todo, SortBy } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface TodoListGridReadOnlyProps {
@@ -30,30 +31,14 @@ export default function TodoListGridReadOnly({ isWidget = false, containerHeight
   const [isHydrated, setIsHydrated] = useState(false)
   const [sortColumn, setSortColumn] = useState<SortBy>('priority')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
-  const [data, setData] = useState<{ todos: Todo[], categories: CategoryOption[], owners: OwnerOption[] } | null>(null)
-  const [loading, setLoading] = useState(true)
+
+  const { todos, categories, owners, hasLoadedFromServer } = useTodoStore()
 
   useEffect(() => {
-    setIsHydrated(true)
-  }, [])
-
-  // Fetch data directly from API - NO ZUSTAND AT ALL
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/todos/neon')
-        if (response.ok) {
-          const jsonData = await response.json()
-          setData(jsonData)
-        }
-      } catch (error) {
-        console.error('Error fetching data for read-only widget:', error)
-      } finally {
-        setLoading(false)
-      }
+    if (hasLoadedFromServer) {
+      setIsHydrated(true)
     }
-    fetchData()
-  }, [])
+  }, [hasLoadedFromServer])
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -91,10 +76,8 @@ export default function TodoListGridReadOnly({ isWidget = false, containerHeight
 
   // Simple filtering and sorting
   const getFilteredTodos = () => {
-    if (!data?.todos) return []
-    
-    let filtered = [...data.todos]
-    
+    let filtered = [...todos]
+
     // Sort by priority and status
     filtered.sort((a, b) => {
       // Completed and dead tasks go to bottom
@@ -104,12 +87,12 @@ export default function TodoListGridReadOnly({ isWidget = false, containerHeight
       if (b.status === 'completed' || b.status === 'dead') {
         if (a.status !== 'completed' && a.status !== 'dead') return -1
       }
-      
+
       // Then sort by priority
       const priorityOrder = { high: 0, medium: 1, low: 2 }
       return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder]
     })
-    
+
     return filtered
   }
 
@@ -121,7 +104,7 @@ export default function TodoListGridReadOnly({ isWidget = false, containerHeight
     sortedTodos = [...activeTasks.reverse(), ...completedTasks.reverse(), ...deadTasks.reverse()]
   }
 
-  if (!isHydrated || loading) {
+  if (!isHydrated) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-white/70">Loading...</div>
@@ -130,7 +113,7 @@ export default function TodoListGridReadOnly({ isWidget = false, containerHeight
   }
 
   // Calculate open tasks count
-  const openTasksCount = data?.todos ? data.todos.filter(t => t.status === 'not_started' || t.status === 'in_progress').length : 0
+  const openTasksCount = todos.filter(t => t.status === 'not_started' || t.status === 'in_progress').length
 
   return (
     <>
@@ -150,7 +133,7 @@ export default function TodoListGridReadOnly({ isWidget = false, containerHeight
         </div>
       </div>
 
-      <div 
+      <div
         className={cn(
           "border-x border-b border-brown-light/30 rounded-b-lg bg-squarage-white",
           "overflow-y-auto scrollbar-thin"
@@ -179,7 +162,7 @@ export default function TodoListGridReadOnly({ isWidget = false, containerHeight
                   />
                 </div>
               ))}
-              
+
               {sortedTodos.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <p className="text-brown-medium text-lg font-medium mb-2">No tasks yet</p>

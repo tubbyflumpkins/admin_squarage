@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { loadingCoordinator } from './loadingCoordinator'
 import type { Expense, ExpenseTagOption } from './expenseTypes'
+import { createEntityStoreSlice } from './createEntityStore'
 
 interface ExpenseStore {
   expenses: Expense[]
@@ -21,9 +21,6 @@ interface ExpenseStore {
   deletePaidBy: (id: string) => void
 }
 
-let saveDebounceTimer: NodeJS.Timeout | null = null
-const SAVE_DEBOUNCE_MS = 5000
-
 const colors = [
   '#264653', '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51',
   '#457B9D', '#1D3557', '#F1FAEE', '#A8DADC', '#E63946',
@@ -33,103 +30,29 @@ const colors = [
 
 const pickFallbackColor = (items: ExpenseTagOption[]) => {
   const used = new Set(items.map(item => item.color))
-  const available = colors.find(color => !used.has(color))
-  return available || colors[Math.floor(Math.random() * colors.length)]
+  return colors.find(color => !used.has(color)) || colors[Math.floor(Math.random() * colors.length)]
 }
+
+const loadSave = createEntityStoreSlice<ExpenseStore>({
+  coordinatorKey: 'expenses-data',
+  endpoint: '/api/expenses/neon',
+  parseResponse: (data) => ({
+    expenses: data.expenses || [],
+    categories: data.categories || [],
+    paidByOptions: data.paidByOptions || [],
+  }),
+  serializeState: (state) => ({
+    expenses: state.expenses,
+    categories: state.categories,
+    paidByOptions: state.paidByOptions,
+  }),
+})
 
 const useExpenseStore = create<ExpenseStore>((set, get) => ({
   expenses: [],
   categories: [],
   paidByOptions: [],
-  isLoading: false,
-  hasLoadedFromServer: false,
-
-  loadFromServer: async () => {
-    const state = get()
-    return loadingCoordinator.coordinatedLoad(
-      'expenses-data',
-      async () => {
-        set({ isLoading: true })
-
-        try {
-          const response = await fetch('/api/expenses/neon', {
-            credentials: 'include',
-          })
-
-          if (!response.ok) {
-            if (response.status === 401 && typeof window !== 'undefined') {
-              window.location.href = '/login'
-            }
-            const errorText = await response.text()
-            throw new Error(`Failed to load expenses: ${response.status} ${errorText}`)
-          }
-
-          const data = await response.json()
-
-          set({
-            expenses: data.expenses || [],
-            categories: data.categories || [],
-            paidByOptions: data.paidByOptions || [],
-            isLoading: false,
-            hasLoadedFromServer: true,
-          })
-        } catch (error) {
-          console.error('Error loading expenses:', error)
-          set({ isLoading: false, hasLoadedFromServer: true })
-          throw error
-        }
-      },
-      { bypassCache: state.isLoading }
-    )
-  },
-
-  saveToServer: async (options?: { immediate?: boolean }) => {
-    const immediate = options?.immediate ?? false
-    const state = get()
-
-    if (!state.hasLoadedFromServer || state.isLoading) {
-      return
-    }
-
-    if (saveDebounceTimer) {
-      clearTimeout(saveDebounceTimer)
-    }
-
-    const save = async () => {
-      try {
-        const response = await fetch('/api/expenses/neon', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            expenses: state.expenses,
-            categories: state.categories,
-            paidByOptions: state.paidByOptions,
-          }),
-        })
-
-        if (!response.ok) {
-          if (response.status === 401 && typeof window !== 'undefined') {
-            window.location.href = '/login'
-            return
-          }
-          const errorData = await response.json().catch(() => ({}))
-          if (errorData.blocked) {
-            return
-          }
-          throw new Error('Failed to save expenses')
-        }
-      } catch (error) {
-        console.error('Error saving expenses:', error)
-      }
-    }
-
-    if (immediate) {
-      await save()
-    } else {
-      saveDebounceTimer = setTimeout(save, SAVE_DEBOUNCE_MS)
-    }
-  },
+  ...loadSave(set, get),
 
   addExpense: (expenseData) => {
     const newExpense: Expense = {
@@ -175,8 +98,8 @@ const useExpenseStore = create<ExpenseStore>((set, get) => ({
 
   updateCategory: (id, name, color) => {
     set((state) => ({
-      categories: state.categories.map((category) =>
-        category.id === id ? { ...category, name, color } : category
+      categories: state.categories.map((cat) =>
+        cat.id === id ? { ...cat, name, color } : cat
       ),
     }))
     get().saveToServer({ immediate: true })
@@ -184,7 +107,7 @@ const useExpenseStore = create<ExpenseStore>((set, get) => ({
 
   deleteCategory: (id) => {
     set((state) => ({
-      categories: state.categories.filter((category) => category.id !== id),
+      categories: state.categories.filter((cat) => cat.id !== id),
     }))
     get().saveToServer({ immediate: true })
   },

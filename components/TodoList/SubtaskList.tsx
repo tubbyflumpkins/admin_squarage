@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { Subtask } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import SubtaskItem from './SubtaskItem'
+import SubtaskItem from '@/components/UI/SubtaskItem'
 import useTodoStore from '@/lib/store'
 
 interface SubtaskListProps {
@@ -94,7 +94,6 @@ export default function SubtaskList({ todoId, subtasks = [], notes = '', isExpan
                 onToggle={() => toggleSubtask(todoId, subtask.id)}
                 onUpdate={(text) => updateSubtask(todoId, subtask.id, { text })}
                 onDelete={() => deleteSubtask(todoId, subtask.id)}
-                backgroundColor={backgroundColor}
               />
             ))}
             

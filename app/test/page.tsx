@@ -18,7 +18,7 @@ export default function TestPage() {
     setMounted(true)
     // Load data when component mounts
     loadFromServer()
-  }, [])
+  }, [loadFromServer])
 
   if (!mounted) {
     return <div>Mounting...</div>

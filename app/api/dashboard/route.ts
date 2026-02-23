@@ -33,11 +33,8 @@ export async function GET() {
   }
 
   try {
-    console.log('[Dashboard API] Loading all dashboard data in single request...')
-    
     // Check if database is configured
     if (!isDatabaseConfigured() || !db) {
-      console.log('[Dashboard API] Database not configured')
       return NextResponse.json({
         todos: { todos: [], categories: [], owners: [] },
         sales: { sales: [], collections: [], products: [], channels: [] },
@@ -79,14 +76,6 @@ export async function GET() {
       db.select().from(eventReminders),
       db.select().from(quickLinks).orderBy(desc(quickLinks.createdAt))
     ])
-
-    console.log('[Dashboard API] Data fetched successfully:', {
-      todos: dbTodos.length,
-      sales: dbSales.length,
-      channels: dbSaleChannels.length,
-      events: dbEvents.length,
-      quickLinks: dbQuickLinks.length
-    })
 
     // Group subtasks by todo ID
     const subtasksByTodoId = dbSubtasks.reduce((acc, subtask) => {

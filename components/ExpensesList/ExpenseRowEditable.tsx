@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import CustomDropdown from '@/components/UI/CustomDropdown'
 import type { Expense, ExpenseTagOption } from '@/lib/expenseTypes'
 import { applyCostSign, isIncomeEntry } from '@/lib/expenseUtils'
+import { useInlineEdit } from '@/hooks/useInlineEdit'
 
 interface ExpenseRowEditableProps {
   paidByOptions: ExpenseTagOption[]
@@ -35,7 +36,6 @@ export default function ExpenseRowEditable({
   onCancel,
 }: ExpenseRowEditableProps) {
   const nameRef = useRef<HTMLInputElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
 
   const [formData, setFormData] = useState({
     paidBy: '',
@@ -78,32 +78,16 @@ export default function ExpenseRowEditable({
     })
   }, [formData, isBlank, onCancel, onSave])
 
+  const { containerRef, handleKeyDown } = useInlineEdit({
+    onSubmit: handleSubmit,
+    onCancel,
+  })
+
   useEffect(() => {
     if (nameRef.current) {
       nameRef.current.focus()
     }
   }, [])
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement
-      if (target.closest('[data-dropdown-portal="true"]')) {
-        return
-      }
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        handleSubmit()
-      }
-    }
-
-    const timeoutId = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside)
-    }, 100)
-
-    return () => {
-      clearTimeout(timeoutId)
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [handleSubmit])
 
   return (
     <div ref={containerRef} className="bg-squarage-white/95 ring-2 ring-squarage-green">
@@ -124,10 +108,7 @@ export default function ExpenseRowEditable({
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSubmit()
-              if (e.key === 'Escape') onCancel()
-            }}
+            onKeyDown={handleKeyDown}
             placeholder="Expense name..."
             className="w-full text-squarage-black bg-transparent px-0 py-0.5 border-none text-sm focus:outline-none focus:ring-1 focus:ring-squarage-green rounded"
           />
@@ -137,10 +118,7 @@ export default function ExpenseRowEditable({
             type="text"
             value={formData.vendor}
             onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSubmit()
-              if (e.key === 'Escape') onCancel()
-            }}
+            onKeyDown={handleKeyDown}
             placeholder="Vendor..."
             className="w-full text-squarage-black bg-transparent px-0 py-0.5 border-none text-sm focus:outline-none focus:ring-1 focus:ring-squarage-green rounded"
           />
@@ -159,10 +137,7 @@ export default function ExpenseRowEditable({
             step="0.01"
             value={formData.costValue}
             onChange={(e) => setFormData({ ...formData, costValue: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSubmit()
-              if (e.key === 'Escape') onCancel()
-            }}
+            onKeyDown={handleKeyDown}
             placeholder="0.00"
             className="w-full text-squarage-black bg-transparent px-0 py-0.5 border-none text-sm focus:outline-none focus:ring-1 focus:ring-squarage-green rounded"
           />
@@ -172,10 +147,7 @@ export default function ExpenseRowEditable({
             type="date"
             value={formData.dateValue}
             onChange={(e) => setFormData({ ...formData, dateValue: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSubmit()
-              if (e.key === 'Escape') onCancel()
-            }}
+            onKeyDown={handleKeyDown}
             className="text-sm text-brown-medium bg-transparent focus:outline-none focus:ring-2 focus:ring-squarage-green rounded px-0 w-full"
           />
         </div>

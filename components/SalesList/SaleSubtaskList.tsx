@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import useSalesStore from '@/lib/salesStore'
-import SaleSubtaskItem from './SaleSubtaskItem'
+import SubtaskItem from '@/components/UI/SubtaskItem'
 import type { Sale } from '@/lib/salesTypes'
 import { cn } from '@/lib/utils'
 
@@ -13,16 +13,14 @@ interface SaleSubtaskListProps {
 }
 
 export default function SaleSubtaskList({ sale, backgroundColor = '#f9f9f9' }: SaleSubtaskListProps) {
-  const { addSubtask, updateNotes, sales } = useSalesStore()
+  const { addSubtask, updateSubtask, deleteSubtask, toggleSubtask, updateNotes, sales } = useSalesStore()
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [newSubtaskText, setNewSubtaskText] = useState('')
   const [notesValue, setNotesValue] = useState(sale.notes || '')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Get the sale to access its notes
   const currentSale = sales.find(s => s.id === sale.id)
-  
-  // Update local notes value when sale changes
+
   useEffect(() => {
     setNotesValue(currentSale?.notes || '')
   }, [currentSale?.notes])
@@ -61,31 +59,28 @@ export default function SaleSubtaskList({ sale, backgroundColor = '#f9f9f9' }: S
         "overflow-hidden transition-all duration-300 ease-in-out relative max-h-[500px] opacity-100"
       )}
     >
-      <div 
+      <div
         className="border-t border-gray-200 relative"
         style={{ backgroundColor }}
       >
-        {/* Column separator line - only on the left */}
         <div className="absolute top-0 bottom-0 border-l border-brown-light/20" style={{ left: '124px' }} />
-        
-        {/* Content container with grid matching parent */}
+
         <div className="grid grid-cols-[14px_110px_1fr_30px_120px_100px_32px]">
-          {/* Empty cells for drag and status */}
           <div></div>
           <div></div>
-          
-          {/* Subtasks column - in order column */}
+
           <div className="py-2 pr-2">
             <div className="mb-1 px-4 text-xs font-semibold text-gray-600">Subtasks</div>
             {sale.subtasks?.map((subtask) => (
-              <SaleSubtaskItem
+              <SubtaskItem
                 key={subtask.id}
                 subtask={subtask}
-                saleId={sale.id}
-                backgroundColor={backgroundColor}
+                onToggle={() => toggleSubtask(sale.id, subtask.id)}
+                onUpdate={(text) => updateSubtask(sale.id, subtask.id, { text })}
+                onDelete={() => deleteSubtask(sale.id, subtask.id)}
               />
             ))}
-            
+
             {isAddingNew ? (
               <div className="px-4">
                 <input
@@ -109,11 +104,9 @@ export default function SaleSubtaskList({ sale, backgroundColor = '#f9f9f9' }: S
               </button>
             )}
           </div>
-          
-          {/* Empty counter column */}
+
           <div></div>
-          
-          {/* Notes column - spans remaining columns */}
+
           <div className="col-span-3 py-2 pl-4">
             <div className="mb-1 text-xs font-semibold text-gray-600">Notes</div>
             <textarea

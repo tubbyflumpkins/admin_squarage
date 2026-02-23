@@ -32,7 +32,7 @@ export default function SalesListMobile() {
     loadFromServer().then(() => {
       setIsHydrated(true)
     })
-  }, []) // Empty dependency array - only run once on mount
+  }, [loadFromServer])
 
   // Handle click outside to save/close editable cards
   useEffect(() => {

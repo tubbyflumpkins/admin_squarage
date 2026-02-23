@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { SaleStatus } from '@/lib/salesTypes'
-import { useDropdownPosition } from './hooks/useDropdownPosition'
+import { useDropdown } from '@/hooks/useDropdown'
 
 interface SalesStatusDropdownProps {
   value: SaleStatus
@@ -19,37 +18,15 @@ const statusOptions: { value: SaleStatus; label: string; bgClass: string; textCo
 ]
 
 export default function SalesStatusDropdown({ value, onChange, compact = false }: SalesStatusDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const buttonRef = useRef<HTMLButtonElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const dropdownPosition = useDropdownPosition(isOpen, buttonRef)
+  const { isOpen, toggle, close, buttonRef, dropdownRef, position } = useDropdown({ gap: 4 })
 
   const currentStatus = statusOptions.find(opt => opt.value === value)
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
-          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isOpen])
-
-  const handleSelect = (newValue: SaleStatus) => {
-    onChange(newValue)
-    setIsOpen(false)
-  }
 
   return (
     <>
       <button
         ref={buttonRef}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => toggle()}
         className={`
           ${compact ? 'px-1.5 py-0.5 text-xs' : 'px-2 py-1 text-sm'}
           ${currentStatus?.bgClass || 'bg-gray-100'} ${currentStatus?.textColor || 'text-gray-700'}
@@ -59,16 +36,16 @@ export default function SalesStatusDropdown({ value, onChange, compact = false }
         {currentStatus?.label || 'Select'}
       </button>
 
-      {isOpen && dropdownPosition && (() => {
-        const baseWidth = dropdownPosition.width || buttonRef.current?.offsetWidth || 120
+      {isOpen && position && (() => {
+        const baseWidth = position.width || buttonRef.current?.offsetWidth || 120
         const menuWidth = Math.max(baseWidth + 8, 96)
         return createPortal(
         <div
           ref={dropdownRef}
           style={{
             position: 'absolute',
-            top: `${dropdownPosition.top}px`,
-            left: `${dropdownPosition.left}px`,
+            top: `${position.top}px`,
+            left: `${position.left}px`,
             minWidth: `${menuWidth}px`,
             width: `${menuWidth}px`,
             zIndex: 9999
@@ -78,7 +55,10 @@ export default function SalesStatusDropdown({ value, onChange, compact = false }
           {statusOptions.map((option) => (
             <button
               key={option.value}
-              onClick={() => handleSelect(option.value)}
+              onClick={() => {
+                onChange(option.value)
+                close()
+              }}
               className={`
                 w-full text-left px-2 py-1.5 hover:bg-gray-50 transition-colors
                 ${compact ? 'text-xs' : 'text-sm'}

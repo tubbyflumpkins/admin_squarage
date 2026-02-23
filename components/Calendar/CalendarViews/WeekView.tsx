@@ -192,19 +192,16 @@ export default function WeekView({ onAddEvent, onEditEvent }: WeekViewProps) {
                       const eventStart = new Date(event.startTime)
                       const eventEnd = new Date(event.endTime)
                       const style = getEventStyle(event)
-                      
-                      // Only render if event is on this day
-                      if (!isSameDay(eventStart, date)) return null
-                      
+
                       return (
                         <div
-                          key={event.id}
+                          key={`${event.id}-${format(date, 'yyyy-MM-dd')}`}
                           onClick={(e) => {
                             e.stopPropagation()
                             onEditEvent(event)
                           }}
                           className="absolute p-1 rounded cursor-pointer hover:opacity-90 transition-opacity text-white overflow-hidden"
-                          style={{ 
+                          style={{
                             ...style,
                             backgroundColor: getEventColor(event)
                           }}

@@ -6,13 +6,15 @@ import useTodoStore from '@/lib/store'
 
 export default function TodoFullPage() {
   const [isHydrated, setIsHydrated] = useState(false)
-  const { todos, loadFromServer } = useTodoStore()
-  
+  const { todos, hasLoadedFromServer, loadFromServer } = useTodoStore()
+
   useEffect(() => {
-    loadFromServer().then(() => {
+    if (!hasLoadedFromServer) {
+      loadFromServer().then(() => setIsHydrated(true))
+    } else {
       setIsHydrated(true)
-    })
-  }, []) // Empty dependency array - only run once on mount
+    }
+  }, [hasLoadedFromServer, loadFromServer])
   
   // Calculate open tasks count
   const openTasksCount = isHydrated ? todos.filter(t => t.status === 'not_started' || t.status === 'in_progress').length : 0

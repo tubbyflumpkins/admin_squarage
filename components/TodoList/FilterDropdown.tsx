@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useDropdown } from '@/hooks/useDropdown'
 
 interface FilterOption {
   id: string
@@ -18,40 +18,28 @@ interface FilterDropdownProps {
   className?: string
 }
 
-export default function FilterDropdown({ 
-  type, 
-  options, 
-  selectedValue, 
-  onSelect, 
-  className 
+export default function FilterDropdown({
+  type,
+  options,
+  selectedValue,
+  onSelect,
+  className
 }: FilterDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  
+  const { isOpen, toggle, close, containerRef } = useDropdown({ mode: 'inline' })
+
   const selectedOption = options.find(opt => opt.name === selectedValue)
   const label = type === 'category' ? 'Category' : 'Owner'
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const handleSelect = (value: string | undefined) => {
     onSelect(value)
-    setIsOpen(false)
+    close()
   }
 
   return (
-    <div ref={dropdownRef} className={cn('relative', className)}>
+    <div ref={containerRef} className={cn('relative', className)}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => toggle()}
         className={cn(
           "w-full px-2 py-1.5 flex items-center justify-center gap-1 hover:text-squarage-green transition-colors",
           "text-xs font-medium",
@@ -83,9 +71,9 @@ export default function FilterDropdown({
           >
             All {label}s
           </button>
-          
+
           <div className="border-t border-brown-light/20" />
-          
+
           {/* Individual options */}
           {options.map((option) => (
             <button
@@ -101,7 +89,7 @@ export default function FilterDropdown({
               <span className="truncate">{option.name}</span>
             </button>
           ))}
-          
+
           {options.length === 0 && (
             <div className="px-3 py-2 text-sm text-brown-light italic">
               No {label.toLowerCase()}s defined

@@ -1,29 +1,18 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { db, isDatabaseConfigured } from '@/lib/db'
+import { db } from '@/lib/db'
 import { sales, saleSubtasks, collections, products, saleChannels } from '@/lib/db/schema'
-import { eq, desc, sql as drizzleSql } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import type { Sale as StoreSale, SaleSubtask as StoreSaleSubtask, Collection as StoreCollection, Product as StoreProduct, SaleChannel as StoreSaleChannel } from '@/lib/salesTypes'
+import {
+  requireAuth,
+  getDb,
+  deleteByIds,
+  readJsonFallback,
+  writeJsonFallback,
+  guardEmptyState,
+} from '@/lib/api/helpers'
 
-// Fallback to JSON file if database is not configured
-async function fallbackToJsonFile() {
-  const fs = await import('fs/promises')
-  const path = await import('path')
-  const DATA_FILE = path.join(process.cwd(), 'data', 'sales.json')
-  
-  try {
-    const data = await fs.readFile(DATA_FILE, 'utf-8')
-    return JSON.parse(data)
-  } catch {
-    return {
-      sales: [],
-      collections: [],
-      products: [],
-      channels: [],
-    }
-  }
-}
+const EMPTY_SALES_STATE = { sales: [], collections: [], products: [], channels: [] }
 
 const formatColorLabel = (value: string, providedName?: string) => {
   if (providedName && providedName.trim().length > 0) {
@@ -69,26 +58,12 @@ const normalizeAvailableColors = (
 }
 
 export async function GET() {
-  // Check authentication
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   try {
-    // Log environment info for debugging
-    console.log('GET /api/sales/neon - Environment:', {
-      NODE_ENV: process.env.NODE_ENV,
-      DATABASE_URL_EXISTS: !!process.env.DATABASE_URL,
-      DATABASE_URL_LENGTH: process.env.DATABASE_URL?.length || 0,
-      IS_VERCEL: !!process.env.VERCEL,
-      VERCEL_ENV: process.env.VERCEL_ENV
-    })
-    
-    // Check if database is configured
-    if (!isDatabaseConfigured() || !db) {
-      console.log('Database not configured, falling back to JSON file')
-      const data = await fallbackToJsonFile()
+    if (!getDb()) {
+      const data = await readJsonFallback('sales.json', EMPTY_SALES_STATE)
       const normalized = {
         ...data,
         collections: Array.isArray(data.collections)
@@ -100,16 +75,14 @@ export async function GET() {
       }
       return NextResponse.json(normalized)
     }
-
-    console.log('Database is configured, fetching sales data...')
     
     // Fetch all data from database
     const [dbSales, dbSaleSubtasks, dbCollections, dbProducts, dbChannels] = await Promise.all([
-      db.select().from(sales).orderBy(desc(sales.createdAt)),
-      db.select().from(saleSubtasks),
-      db.select().from(collections).orderBy(collections.name),
-      db.select().from(products).orderBy(products.name),
-      db.select().from(saleChannels).orderBy(saleChannels.name)
+      db!.select().from(sales).orderBy(desc(sales.createdAt)),
+      db!.select().from(saleSubtasks),
+      db!.select().from(collections).orderBy(collections.name),
+      db!.select().from(products).orderBy(products.name),
+      db!.select().from(saleChannels).orderBy(saleChannels.name)
     ])
 
     // Group subtasks by sale ID
@@ -171,18 +144,10 @@ export async function GET() {
       channels: transformedChannels || [],
     }
     
-    console.log('Sales data fetched successfully:', {
-      sales: transformedSales.length,
-      collections: transformedCollections.length,
-      products: transformedProducts.length,
-      channels: transformedChannels.length,
-    })
-
     return NextResponse.json(response)
   } catch (error) {
     console.error('Error fetching sales data from database:', error)
-    // Fallback to JSON file on error
-    const data = await fallbackToJsonFile()
+    const data = await readJsonFallback('sales.json', EMPTY_SALES_STATE)
     const normalized = {
       ...data,
       collections: Array.isArray(data.collections)
@@ -197,70 +162,33 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  // Check authentication
-  const session = await getServerSession(authOptions)
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const auth = await requireAuth()
+  if (auth instanceof NextResponse) return auth
 
   try {
     const data = await request.json()
-    
-    // Log incoming data for debugging
-    console.log('POST /api/sales/neon - Received data:', {
-      salesCount: data.sales?.length || 0,
-      collectionsCount: data.collections?.length || 0,
-      productsCount: data.products?.length || 0,
-      channelsCount: data.channels?.length || 0,
-      hasCollections: !!data.collections,
-      hasProducts: !!data.products,
-      hasChannels: !!data.channels,
-    })
-    
-    // CRITICAL VALIDATION: Never accept empty state that would delete all data
+
     if (!data || typeof data !== 'object') {
-      console.error('Invalid data format received')
       return NextResponse.json({ error: 'Invalid data format' }, { status: 400 })
     }
-    
-    // Check if this would result in deleting all data
-    const hasAnyData = (data.sales && data.sales.length > 0) || 
-                       (data.collections && data.collections.length > 0) || 
-                       (data.products && data.products.length > 0) ||
-                       (data.channels && data.channels.length > 0)
-    
-    if (!hasAnyData) {
-      // Fetch current data to check if database has existing data
-      if (isDatabaseConfigured() && db) {
-        const [existingSales, existingCollections, existingProducts] = await Promise.all([
-          db.select().from(sales).limit(1),
-          db.select().from(collections).limit(1),
-          db.select().from(products).limit(1)
-        ])
-        
-        if (existingSales.length > 0 || existingCollections.length > 0 || existingProducts.length > 0) {
-          console.error('BLOCKED: Attempted to delete all sales data with empty state')
-          return NextResponse.json({ 
-            error: 'Cannot save empty state when database contains data', 
-            blocked: true 
-          }, { status: 400 })
-        }
-      }
-    }
-    
-    // Check if database is configured
-    if (!isDatabaseConfigured() || !db) {
-      console.log('Database not configured, falling back to JSON file')
-      // Fall back to file system
-      const fs = await import('fs/promises')
-      const path = await import('path')
-      const DATA_FILE = path.join(process.cwd(), 'data', 'sales.json')
-      
-      // Ensure directory exists
-      const dir = path.dirname(DATA_FILE)
-      await fs.mkdir(dir, { recursive: true })
-      
-      await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2))
+
+    const hasAnyData = (data.sales?.length > 0) ||
+                       (data.collections?.length > 0) ||
+                       (data.products?.length > 0) ||
+                       (data.channels?.length > 0)
+
+    const blocked = await guardEmptyState(hasAnyData, async () => {
+      const [existingSales, existingCollections, existingProducts] = await Promise.all([
+        db!.select().from(sales).limit(1),
+        db!.select().from(collections).limit(1),
+        db!.select().from(products).limit(1)
+      ])
+      return existingSales.length > 0 || existingCollections.length > 0 || existingProducts.length > 0
+    })
+    if (blocked) return blocked
+
+    if (!getDb()) {
+      await writeJsonFallback('sales.json', data)
       return NextResponse.json({ success: true })
     }
 
@@ -269,11 +197,11 @@ export async function POST(request: Request) {
     
     // Step 1: Get all existing IDs
     const [existingSales, existingSaleSubtasks, existingCollections, existingProducts, existingChannels] = await Promise.all([
-      db.select({ id: sales.id }).from(sales),
-      db.select({ id: saleSubtasks.id }).from(saleSubtasks),
-      db.select({ id: collections.id }).from(collections),
-      db.select({ id: products.id }).from(products),
-      db.select({ id: saleChannels.id }).from(saleChannels)
+      db!.select({ id: sales.id }).from(sales),
+      db!.select({ id: saleSubtasks.id }).from(saleSubtasks),
+      db!.select({ id: collections.id }).from(collections),
+      db!.select({ id: products.id }).from(products),
+      db!.select({ id: saleChannels.id }).from(saleChannels)
     ])
 
     const existingSaleIds = new Set(existingSales.map(s => s.id))
@@ -323,31 +251,11 @@ export async function POST(request: Request) {
     }
     
     // Delete removed items
-    if (saleSubtaskIdsToDelete.length > 0) {
-      await db.delete(saleSubtasks).where(
-        drizzleSql`${saleSubtasks.id} IN (${drizzleSql.join(saleSubtaskIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
-      )
-    }
-    if (saleIdsToDelete.length > 0) {
-      await db.delete(sales).where(
-        drizzleSql`${sales.id} IN (${drizzleSql.join(saleIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
-      )
-    }
-    if (productIdsToDelete.length > 0) {
-      await db.delete(products).where(
-        drizzleSql`${products.id} IN (${drizzleSql.join(productIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
-      )
-    }
-    if (collectionIdsToDelete.length > 0) {
-      await db.delete(collections).where(
-        drizzleSql`${collections.id} IN (${drizzleSql.join(collectionIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
-      )
-    }
-    if (channelIdsToDelete.length > 0) {
-      await db.delete(saleChannels).where(
-        drizzleSql`${saleChannels.id} IN (${drizzleSql.join(channelIdsToDelete.map(id => drizzleSql`${id}`), drizzleSql`, `)})`
-      )
-    }
+    await deleteByIds(saleSubtasks, saleSubtasks.id, saleSubtaskIdsToDelete)
+    await deleteByIds(sales, sales.id, saleIdsToDelete)
+    await deleteByIds(products, products.id, productIdsToDelete)
+    await deleteByIds(collections, collections.id, collectionIdsToDelete)
+    await deleteByIds(saleChannels, saleChannels.id, channelIdsToDelete)
 
     // Step 4: UPSERT channels first so sales references are valid
     if (data.channels && data.channels.length > 0) {
@@ -400,7 +308,7 @@ export async function POST(request: Request) {
         
         // Create promise for sale upsert
         const salePromise = existingSaleIds.has(sale.id)
-          ? db.update(sales)
+          ? db!.update(sales)
               .set({
                 name: saleValues.name,
                 productId: saleValues.productId,
@@ -414,14 +322,14 @@ export async function POST(request: Request) {
                 updatedAt: saleValues.updatedAt
               })
               .where(eq(sales.id, sale.id))
-          : db.insert(sales).values(saleValues)
+          : db!.insert(sales).values(saleValues)
         
         salePromises.push(salePromise)
         
         // Handle subtasks for this sale
         if (saleSubtaskList && saleSubtaskList.length > 0) {
           // First get existing subtasks (this needs to be sequential)
-          const existingSaleSubtasksList = await db.select({ id: saleSubtasks.id })
+          const existingSaleSubtasksList = await db!.select({ id: saleSubtasks.id })
             .from(saleSubtasks)
             .where(eq(saleSubtasks.saleId, sale.id))
           const existingSaleSubtaskIdsSet = new Set(existingSaleSubtasksList.map(s => s.id))
@@ -474,7 +382,7 @@ export async function POST(request: Request) {
         if (existingCollectionIds.has(collection.id)) {
           // Update existing collection
           collectionPromises.push(
-            db.update(collections)
+            db!.update(collections)
               .set({
                 name: collectionValues.name,
                 color: collectionValues.color,
@@ -485,7 +393,7 @@ export async function POST(request: Request) {
         } else {
           // Insert new collection
           collectionPromises.push(
-            db.insert(collections).values(collectionValues)
+            db!.insert(collections).values(collectionValues)
           )
         }
       }
@@ -509,7 +417,7 @@ export async function POST(request: Request) {
         if (existingProductIds.has(product.id)) {
           // Update existing product
           productPromises.push(
-            db.update(products)
+            db!.update(products)
               .set({
                 name: productValues.name,
                 revenue: productValues.revenue,
@@ -520,7 +428,7 @@ export async function POST(request: Request) {
         } else {
           // Insert new product
           productPromises.push(
-            db.insert(products).values(productValues)
+            db!.insert(products).values(productValues)
           )
         }
       }

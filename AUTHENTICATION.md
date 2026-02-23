@@ -305,6 +305,7 @@ npx tsx scripts/check-todos.ts  # Shows users and todo ownership
 
 ---
 
-Last Updated: August 2025
+Last Updated: February 2026
 NextAuth Version: 4.24.11
-Next.js Version: 14.2.31
+Next.js Version: 15.5.x
+React Version: 19.2.x

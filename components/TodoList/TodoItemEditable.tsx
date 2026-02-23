@@ -6,6 +6,7 @@ import { Trash2 } from 'lucide-react'
 import { Todo, TodoStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import useTodoStore from '@/lib/store'
+import { useInlineEdit } from '@/hooks/useInlineEdit'
 import StatusDropdown from './StatusDropdown'
 import CustomDropdown from '@/components/UI/CustomDropdown'
 import PriorityDropdown from '@/components/UI/PriorityDropdown'
@@ -20,7 +21,6 @@ interface TodoItemEditableProps {
 export default function TodoItemEditable({ todo, isNew = false, onSave, onCancel }: TodoItemEditableProps) {
   const { categories, owners } = useTodoStore()
   const titleRef = useRef<HTMLInputElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
   
   const [formData, setFormData] = useState({
     title: todo?.title || '',
@@ -62,40 +62,16 @@ export default function TodoItemEditable({ todo, isNew = false, onSave, onCancel
     }
   }, [formData, onSave, onCancel, isNew, isTaskBlank])
 
+  const { containerRef, handleKeyDown } = useInlineEdit({
+    onSubmit: handleSubmit,
+    onCancel,
+  })
+
   useEffect(() => {
     if (isNew && titleRef.current) {
       titleRef.current.focus()
     }
   }, [isNew])
-
-  // Handle click outside to save
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        handleSubmit()
-      }
-    }
-
-    // Add event listener with a slight delay to avoid immediate trigger
-    const timeoutId = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside)
-    }, 100)
-
-    return () => {
-      clearTimeout(timeoutId)
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [handleSubmit])
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
-    } else if (e.key === 'Escape') {
-      // Always cancel on Escape (will auto-delete if blank)
-      onCancel()
-    }
-  }
 
 
   return (

@@ -67,6 +67,7 @@ export default function QuickLinksGrid() {
   const {
     quickLinks,
     filters,
+    hasLoadedFromServer,
     loadFromServer,
     addQuickLink,
     updateQuickLink,
@@ -84,10 +85,12 @@ export default function QuickLinksGrid() {
   )
 
   useEffect(() => {
-    loadFromServer().then(() => {
+    if (!hasLoadedFromServer) {
+      loadFromServer().then(() => setIsHydrated(true))
+    } else {
       setIsHydrated(true)
-    })
-  }, []) // Empty dependency array - only run once on mount
+    }
+  }, [hasLoadedFromServer, loadFromServer])
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event

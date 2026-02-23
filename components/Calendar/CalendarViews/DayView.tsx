@@ -28,7 +28,7 @@ export default function DayView({ onAddEvent, onEditEvent }: DayViewProps) {
   
   const dayEvents = useMemo(() => {
     return getEventsForDateRange(startOfDay(selectedDate), endOfDay(selectedDate))
-  }, [selectedDate, getEventsForDateRange, events])
+  }, [selectedDate, getEventsForDateRange])
   
   const allDayEvents = dayEvents.filter(event => event.allDay)
   const timedEvents = dayEvents.filter(event => !event.allDay)

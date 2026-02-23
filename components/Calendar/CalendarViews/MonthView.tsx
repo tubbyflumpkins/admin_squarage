@@ -90,7 +90,7 @@ export default function MonthView({ onAddEvent, onEditEvent }: MonthViewProps) {
               <div className="flex-1 overflow-hidden space-y-1">
                 {events.slice(0, 3).map((event) => (
                   <div
-                    key={event.id}
+                    key={`${event.id}-${format(date, 'yyyy-MM-dd')}`}
                     onClick={(e) => {
                       e.stopPropagation()
                       onEditEvent(event)
