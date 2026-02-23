@@ -12,7 +12,7 @@ class LoadingCoordinator {
   private static instance: LoadingCoordinator
   private loadingPromises: Map<string, LoadingPromise> = new Map()
   private cache: Map<string, { data: any; timestamp: number }> = new Map()
-  private readonly CACHE_TTL = 1000 // 1 second cache to prevent rapid reloads
+  private readonly CACHE_TTL = 30000 // 30 second cache to prevent redundant reloads
 
   private constructor() {}
 
@@ -37,7 +37,7 @@ class LoadingCoordinator {
     if (!options.bypassCache) {
       const cached = this.cache.get(key)
       if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-        console.log(`[LoadingCoordinator] Returning cached data for ${key}`)
+
         return cached.data as T
       }
     }
@@ -45,12 +45,12 @@ class LoadingCoordinator {
     // Check if already loading
     const existingPromise = this.loadingPromises.get(key)
     if (existingPromise) {
-      console.log(`[LoadingCoordinator] Reusing existing request for ${key}`)
+
       return existingPromise as Promise<T>
     }
 
     // Start new load
-    console.log(`[LoadingCoordinator] Starting new request for ${key}`)
+
     const promise = loadFn()
       .then((data) => {
         // Cache the result

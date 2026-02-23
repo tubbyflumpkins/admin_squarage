@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { format } from 'date-fns'
-import { Sale, Product, Collection } from '@/lib/salesTypes'
+import useSalesStore from '@/lib/salesStore'
 import { cn } from '@/lib/utils'
 import SalesItemWidget from './SalesItemWidget'
 
@@ -13,62 +12,43 @@ interface SalesListGridReadOnlyProps {
 
 export default function SalesListGridReadOnly({ isWidget = false, containerHeight = '400px' }: SalesListGridReadOnlyProps) {
   const [isHydrated, setIsHydrated] = useState(false)
-  const [data, setData] = useState<{ sales: Sale[], products: Product[], collections: Collection[] } | null>(null)
-  const [loading, setLoading] = useState(true)
+
+  const { sales, products, collections, hasLoadedFromServer } = useSalesStore()
 
   useEffect(() => {
-    setIsHydrated(true)
-  }, [])
-
-  // Fetch data directly from API - NO ZUSTAND AT ALL
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/sales/neon')
-        if (response.ok) {
-          const jsonData = await response.json()
-          setData(jsonData)
-        }
-      } catch (error) {
-        console.error('Error fetching data for read-only widget:', error)
-      } finally {
-        setLoading(false)
-      }
+    if (hasLoadedFromServer) {
+      setIsHydrated(true)
     }
-    fetchData()
-  }, [])
+  }, [hasLoadedFromServer])
 
   // Sort sales matching the sales tracker logic
   const getSortedSales = () => {
-    if (!data?.sales) return []
-    
-    const sales = [...data.sales]
-    
+    const salesCopy = [...sales]
+
     // Separate by status
-    const active = sales.filter(s => s.status !== 'fulfilled' && s.status !== 'dead')
-    const fulfilled = sales.filter(s => s.status === 'fulfilled')
-    const dead = sales.filter(s => s.status === 'dead')
-    
-    // Sort each group by placement date (oldest to newest for active, matching salesStore)
+    const active = salesCopy.filter(s => s.status !== 'fulfilled' && s.status !== 'dead')
+    const fulfilled = salesCopy.filter(s => s.status === 'fulfilled')
+    const dead = salesCopy.filter(s => s.status === 'dead')
+
+    // Sort each group by placement date (oldest to newest for active)
     active.sort((a, b) => {
       return new Date(a.placementDate).getTime() - new Date(b.placementDate).getTime()
     })
-    
+
     fulfilled.sort((a, b) => {
       return new Date(a.placementDate).getTime() - new Date(b.placementDate).getTime()
     })
-    
+
     dead.sort((a, b) => {
       return new Date(a.placementDate).getTime() - new Date(b.placementDate).getTime()
     })
-    
-    // Return with active first, then fulfilled, then dead at bottom
+
     return [...active, ...fulfilled, ...dead]
   }
 
   const sortedSales = getSortedSales()
 
-  if (!isHydrated || loading) {
+  if (!isHydrated) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-white/70">Loading...</div>
@@ -79,14 +59,13 @@ export default function SalesListGridReadOnly({ isWidget = false, containerHeigh
   // Calculate pipeline metrics
   const pipelineSales = sortedSales.filter(s => s.status === 'not_started' || s.status === 'in_progress')
   const pipelineCount = pipelineSales.length
-  
-  // Calculate pipeline revenue
+
   const pipelineRevenue = pipelineSales.reduce((sum, sale) => {
     let revenue = 0
     if (typeof sale.revenue === 'number' && sale.revenue >= 0) {
       revenue = sale.revenue
-    } else if (sale.productId && data?.products) {
-      const product = data.products.find(p => p.id === sale.productId)
+    } else if (sale.productId) {
+      const product = products.find(p => p.id === sale.productId)
       if (product && typeof product.revenue === 'number') {
         revenue = product.revenue
       }
@@ -115,7 +94,7 @@ export default function SalesListGridReadOnly({ isWidget = false, containerHeigh
         </div>
       </div>
 
-      <div 
+      <div
         className={cn(
           "border-x border-b border-brown-light/30 rounded-b-lg bg-squarage-white",
           "overflow-y-auto scrollbar-thin"
@@ -127,12 +106,12 @@ export default function SalesListGridReadOnly({ isWidget = false, containerHeigh
             <div key={sale.id} className="hover:bg-squarage-white/30">
               <SalesItemWidget
                 sale={sale}
-                products={data?.products || []}
-                collections={data?.collections || []}
+                products={products}
+                collections={collections}
               />
             </div>
           ))}
-          
+
           {sortedSales.length === 0 && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <p className="text-brown-medium text-lg font-medium mb-2">No sales yet</p>

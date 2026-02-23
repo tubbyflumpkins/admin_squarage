@@ -15,13 +15,15 @@ function stripHtml(html: string): string {
 export default function NotesWidget() {
   const router = useRouter()
   const [isHydrated, setIsHydrated] = useState(false)
-  const { notes, loadFromServer } = useNotesStore()
+  const { notes, hasLoadedFromServer, loadFromServer } = useNotesStore()
 
   useEffect(() => {
-    loadFromServer().then(() => {
+    if (!hasLoadedFromServer) {
+      loadFromServer().then(() => setIsHydrated(true))
+    } else {
       setIsHydrated(true)
-    })
-  }, [])
+    }
+  }, [hasLoadedFromServer, loadFromServer])
 
   const recentNotes = notes.slice(0, 6)
 

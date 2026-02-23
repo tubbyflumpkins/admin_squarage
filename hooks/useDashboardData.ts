@@ -14,10 +14,7 @@ export function useDashboardData() {
     // Only initiate loading once per component mount
     if (!hasInitiated.current && !hasLoadedDashboard && !isLoadingDashboard) {
       hasInitiated.current = true
-      console.log('[useDashboardData] Initiating dashboard data load')
-      loadDashboardData().catch(error => {
-        console.error('[useDashboardData] Failed to load dashboard data:', error)
-      })
+      loadDashboardData().catch(() => {})
     }
   }, [hasLoadedDashboard, isLoadingDashboard, loadDashboardData])
 

@@ -22,16 +22,19 @@ export default function CalendarFullPage() {
   const {
     currentView,
     selectedDate,
+    hasLoadedFromServer,
     loadFromServer,
     events,
     calendarTypes,
   } = useCalendarStore()
 
   useEffect(() => {
-    loadFromServer().then(() => {
+    if (!hasLoadedFromServer) {
+      loadFromServer().then(() => setIsHydrated(true))
+    } else {
       setIsHydrated(true)
-    })
-  }, [loadFromServer])
+    }
+  }, [hasLoadedFromServer, loadFromServer])
 
   const handleAddEvent = (date?: Date) => {
     setSelectedEvent(null)

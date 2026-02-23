@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { useDashboardData } from '@/hooks/useDashboardData'
 import Header from '@/components/UI/Header'
 import TodoWidget from '@/components/TodoList/TodoWidget'
 import SalesWidget from '@/components/SalesList/SalesWidget'
@@ -16,6 +17,9 @@ export default function Home() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const isMobile = useIsMobile()
+
+  // Load all dashboard data in a single API call
+  useDashboardData()
 
   useEffect(() => {
     if (status === 'unauthenticated') {

@@ -68,8 +68,11 @@ export function createEntityStoreSlice<TState extends LoadingState>(
     isLoading: false as boolean,
     hasLoadedFromServer: false as boolean,
 
-    loadFromServer: async () => {
+    loadFromServer: async (options?: { force?: boolean }) => {
       const state = get()
+
+      // Skip if already loaded (unless forced)
+      if (state.hasLoadedFromServer && !options?.force) return
 
       return loadingCoordinator.coordinatedLoad(
         coordinatorKey,
