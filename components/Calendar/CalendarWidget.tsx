@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import useCalendarStore from '@/lib/calendarStore'
-import { format, isToday, isTomorrow, startOfDay } from 'date-fns'
+import { format, isToday, isTomorrow, startOfDay, addDays } from 'date-fns'
 import WidgetContainer from '@/components/Dashboard/WidgetContainer'
 
 export default function CalendarWidget() {
@@ -12,6 +12,7 @@ export default function CalendarWidget() {
     events,
     calendarTypes,
     hasLoadedFromServer,
+    getEventsForDate,
   } = useCalendarStore()
 
   useEffect(() => {
@@ -20,35 +21,54 @@ export default function CalendarWidget() {
     }
   }, [hasLoadedFromServer])
 
-  // Get all upcoming events (from start of today onwards)
   const today = new Date()
   const startOfTodayDate = startOfDay(today)
 
-  // Filter all events to get events from today onwards (including past events from today)
-  const upcomingEvents = events.filter(event => {
-    const eventTime = new Date(event.startTime)
-    return eventTime >= startOfTodayDate
-  })
+  // Build upcoming event instances (including recurring) for the next 30 days
+  const displayEvents = useMemo(() => {
+    if (!isHydrated) return []
 
-  // Sort by date and take the first 5
-  upcomingEvents.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-  const displayEvents = upcomingEvents.slice(0, 5)
+    const seen = new Set<string>()
+    const instances: { event: typeof events[0]; instanceDate: Date }[] = []
 
-  const getEventColor = (event: any) => {
+    for (let i = 0; i < 30; i++) {
+      const checkDate = addDays(startOfTodayDate, i)
+      const dayEvents = getEventsForDate(checkDate)
+
+      for (const event of dayEvents) {
+        // Deduplicate: same event on same day
+        const key = `${event.id}-${format(checkDate, 'yyyy-MM-dd')}`
+        if (seen.has(key)) continue
+        seen.add(key)
+
+        instances.push({ event, instanceDate: checkDate })
+      }
+    }
+
+    // Sort by occurrence date, then by start time
+    instances.sort((a, b) => {
+      const dateDiff = a.instanceDate.getTime() - b.instanceDate.getTime()
+      if (dateDiff !== 0) return dateDiff
+      return new Date(a.event.startTime).getTime() - new Date(b.event.startTime).getTime()
+    })
+
+    return instances.slice(0, 5)
+  }, [isHydrated, events, startOfTodayDate.getTime(), getEventsForDate])
+
+  const getEventColor = (event: typeof events[0]) => {
     const type = calendarTypes.find(t => t.id === event.calendarTypeId)
     return type?.color || '#4A9B4E'
   }
 
-  const formatEventTime = (event: any) => {
+  const formatEventTime = (event: typeof events[0]) => {
     if (event.allDay) return 'All day'
     return format(new Date(event.startTime), 'HH:mm')
   }
 
-  const getEventDateLabel = (event: any) => {
-    const eventDate = new Date(event.startTime)
-    if (isToday(eventDate)) return 'Today'
-    if (isTomorrow(eventDate)) return 'Tomorrow'
-    return format(eventDate, 'MMM d')
+  const getDateLabel = (date: Date) => {
+    if (isToday(date)) return 'Today'
+    if (isTomorrow(date)) return 'Tomorrow'
+    return format(date, 'MMM d')
   }
 
   if (!isHydrated) {
@@ -93,11 +113,11 @@ export default function CalendarWidget() {
               <p className="text-brown-light text-sm">Click to view the calendar</p>
             </div>
           ) : (
-            displayEvents.map((event) => (
-              <div key={event.id} className="grid grid-cols-[100px_1fr_80px] text-sm hover:bg-squarage-white/30">
+            displayEvents.map(({ event, instanceDate }) => (
+              <div key={`${event.id}-${format(instanceDate, 'yyyy-MM-dd')}`} className="grid grid-cols-[100px_1fr_80px] text-sm hover:bg-squarage-white/30">
                 {/* Date */}
                 <div className="px-2 py-1.5 text-center text-brown-medium">
-                  <span className="font-medium">{getEventDateLabel(event)}</span>
+                  <span className="font-medium">{getDateLabel(instanceDate)}</span>
                 </div>
 
                 {/* Event Title with color indicator */}
