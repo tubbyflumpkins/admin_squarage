@@ -378,6 +378,18 @@ export type NotificationPreferences = typeof notificationPreferences.$inferSelec
 export type NewNotificationPreferences = typeof notificationPreferences.$inferInsert
 export type EmailSubscriber = typeof emailSubscribers.$inferSelect
 export type NewEmailSubscriber = typeof emailSubscribers.$inferInsert
+export type Note = typeof notes.$inferSelect
+export type NewNote = typeof notes.$inferInsert
+
+// Notes table
+export const notes = pgTable('notes', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  userId: varchar('user_id', { length: 255 }).references(() => users.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull().default(''),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
 
 // Email Templates table
 export const emailTemplates = pgTable('email_templates', {

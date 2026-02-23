@@ -39,6 +39,6 @@ export const config = {
      * - images (public images)
      * - manifest.json
      */
-    '/((?!_next/static|_next/image|favicon.ico|images|manifest.json).*)',
+    '/((?!_next/static|_next/image|favicon.ico|images|manifest.json|service-worker.js).*)',
   ],
 }
