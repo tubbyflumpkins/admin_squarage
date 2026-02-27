@@ -6,8 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import Header from '@/components/UI/Header'
 import MobileLayout from '@/components/Mobile/Layout/MobileLayout'
-import NotificationSettings from '@/components/Notifications/NotificationSettings'
-import { User, Lock, Save, Eye, EyeOff, Check, X, LogOut, Bell } from 'lucide-react'
+import { User, Lock, Save, Eye, EyeOff, Check, X, LogOut } from 'lucide-react'
 
 export default function SettingsPage() {
   const { data: session, status } = useSession()
@@ -260,15 +259,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Notification Settings Section */}
-      <div className="relative backdrop-blur-md bg-white/35 rounded-2xl shadow-2xl border border-white/40 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Bell className="h-6 w-6 text-white" />
-          <h2 className="text-xl font-semibold text-white">Notification Settings</h2>
-        </div>
-        
-        <NotificationSettings />
-      </div>
     </div>
   )
 
