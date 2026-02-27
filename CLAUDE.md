@@ -44,8 +44,7 @@ admin_squarage/
 │   │   ├── notes/neon/route.ts     # Notes CRUD (per-record, no helpers)
 │   │   ├── dashboard/route.ts      # Unified dashboard data endpoint
 │   │   ├── emails/                 # Email sending system
-│   │   ├── email-capture/          # Email subscriber capture
-│   │   └── notifications/          # Push notification system
+│   │   └── email-capture/          # Email subscriber capture
 │   ├── todo/page.tsx          # Full-page todo view
 │   ├── sales/page.tsx         # Full-page sales view
 │   ├── calendar/page.tsx      # Full-page calendar view
@@ -126,7 +125,7 @@ admin_squarage/
 ├── /quick-links    # Full-page quick links with drag-and-drop
 ├── /expenses       # Full-page expense tracker with tags
 ├── /email          # Email subscriber database + email management
-├── /settings       # User settings, notifications, password change
+├── /settings       # User settings, password change
 └── /login          # Authentication page
 ```
 
@@ -355,7 +354,6 @@ DATABASE_URL=postgresql://user:pass@host/dbname?sslmode=require
 - **Expenses**: Expense tracking with tags and inline editing
 - **Quick Links**: Drag-and-drop link management with search/sort
 - **Email**: Subscriber database with CSV export + email sending system
-- **Notifications**: Push notifications (browser + iOS PWA) with real-time bell
 
 ## Shared Hooks & Infrastructure
 
@@ -431,6 +429,13 @@ Shared glassmorphism widget wrapper for all 5 dashboard widgets:
 This dashboard is production-ready and deployed on Vercel with full CRUD for todos, sales, calendar, notes, quick links, and expenses.
 
 ## Recent Major Updates
+
+### Notification System Removal (February 2026)
+- **Removed entirely** to fix excessive Vercel function invocations (SSE reconnect storms + stacking polling intervals)
+- Deleted: `app/api/notifications/`, `components/Notifications/`, `lib/notifications.ts`, service workers
+- Removed notification triggers from todos API, notification tables from DB schema (tables still in DB, just not in code)
+- Removed daily-reminder cron from `vercel.json`
+- DB tables (`notifications`, `push_subscriptions`, `notification_preferences`) still exist but are unused — can be dropped later
 
 ### 2026 Streamline & Modernize (February 2026)
 - **Shared Hooks**: `useDropdown` (10 dropdowns), `useInlineEdit` (4 editable components)
