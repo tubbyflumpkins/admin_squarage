@@ -3,11 +3,5 @@
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
-  "outputDirectory": ".next",
-  "crons": [
-    {
-      "path": "/api/notifications/daily-reminder",
-      "schedule": "0 15 * * *"
-    }
-  ]
+  "outputDirectory": ".next"
 }

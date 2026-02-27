@@ -2,7 +2,6 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import NotificationBell from '@/components/Notifications/NotificationBell'
 import UserAvatar from '@/components/UI/UserAvatar'
 
 export default function Header() {
@@ -71,7 +70,6 @@ export default function Header() {
               Email
             </Link>
             <div className="flex items-center space-x-3 ml-2">
-              <NotificationBell />
               <UserAvatar />
             </div>
           </nav>
