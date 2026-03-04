@@ -6,9 +6,6 @@ import * as schema from './schema'
 // This enables fetch-based queries which are faster in serverless environments
 neonConfig.poolQueryViaFetch = true
 
-// CRITICAL: Set connection limits to prevent exhaustion
-neonConfig.fetchConnectionCache = true
-
 // Get the database URL from environment variable
 const getDatabaseUrl = () => {
   if (process.env.DATABASE_URL) {
