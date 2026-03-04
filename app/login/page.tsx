@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { signIn, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import AnimatedLogo, { hasAnimatedThisPageLoad } from '@/components/UI/AnimatedLogo'
+import StaticLogo from '@/components/UI/StaticLogo'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 
 export default function LoginPage() {
@@ -14,11 +14,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [adminVisible, setAdminVisible] = useState(hasAnimatedThisPageLoad)
-
-  const handleLogoComplete = useCallback(() => {
-    setAdminVisible(true)
-  }, [])
 
   // Redirect if already logged in
   useEffect(() => {
@@ -85,14 +80,8 @@ export default function LoginPage() {
       <div className="relative w-full max-w-md">
         <div className="bg-white/10 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 p-8">
           {/* Logo */}
-          <div className="flex justify-center items-end gap-2 mb-8">
-            <AnimatedLogo className="h-[36px]" instanceId="login" onAnimationComplete={handleLogoComplete} />
-            <span
-              className="text-white font-black text-[50px] leading-none transition-opacity duration-500"
-              style={{ opacity: adminVisible ? 1 : 0, marginBottom: '-0.18em', fontFamily: 'var(--font-neue-haas)' }}
-            >
-              Admin
-            </span>
+          <div className="flex justify-center mb-8">
+            <StaticLogo className="h-[36px]" />
           </div>
 
           {/* Title */}
