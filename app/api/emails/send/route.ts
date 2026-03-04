@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { requirePermission } from '@/lib/api/helpers'
 import { Resend } from 'resend'
 import { render } from '@react-email/render'
 import { db } from '@/lib/db'
@@ -21,9 +20,10 @@ const REPLY_TO = process.env.RESEND_REPLY_TO || 'hello@squarage.com'
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication for admin-initiated sends
-    const session = await getServerSession(authOptions)
-    const isAuthenticated = !!session
+    // Check authentication and email permission
+    const auth = await requirePermission('email')
+    if (auth instanceof NextResponse) return auth
+    const isAuthenticated = true
 
     const body = await request.json()
     const {
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         templateType,
         variables,
         isTest,
-        sentBy: session?.user?.email || 'system',
+        sentBy: auth.user.email || 'system',
       },
       createdAt: now,
     })

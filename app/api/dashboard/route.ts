@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db, isDatabaseConfigured } from '@/lib/db'
+import { getPermissionsForRole } from '@/lib/permissions.server'
 import {
   todos,
   categories,
@@ -152,8 +153,13 @@ export async function GET() {
       updatedAt: sale.updatedAt
     }))
 
+    // Get user's permissions for client-side filtering
+    const role = (session.user as { role?: string })?.role || 'user'
+    const permissions = await getPermissionsForRole(role)
+
     // Return all data in structured format
     return NextResponse.json({
+      permissions,
       todos: {
         todos: transformedTodos,
         categories: dbCategories,

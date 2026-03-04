@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { usePagePermission } from '@/hooks/usePagePermission'
 import Header from '@/components/UI/Header'
 import DatabaseTab from '@/components/Email/DatabaseTab'
 import EmailsTab from '@/components/Email/EmailsTab'
@@ -15,6 +16,7 @@ export default function EmailPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabType>('database')
+  const { allowed, isChecking } = usePagePermission('email')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -22,7 +24,7 @@ export default function EmailPage() {
     }
   }, [status, router])
 
-  if (status === 'loading') {
+  if (status === 'loading' || isChecking) {
     return (
       <div className="min-h-screen bg-squarage-green flex items-center justify-center">
         <div className="text-center">
@@ -33,7 +35,7 @@ export default function EmailPage() {
     )
   }
 
-  if (status === 'unauthenticated') {
+  if (status === 'unauthenticated' || !allowed) {
     return null
   }
 

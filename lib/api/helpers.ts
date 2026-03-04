@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { db, isDatabaseConfigured } from '@/lib/db'
 import { sql as drizzleSql } from 'drizzle-orm'
 import type { AnyColumn } from 'drizzle-orm'
+import { getPermissionsForRole } from '@/lib/permissions.server'
+import { ADMIN_ROLE, type Permission } from '@/lib/permissionKeys'
 
 type AuthSession = { user: { id: string; name: string; email: string; role?: string } }
 
@@ -16,6 +18,33 @@ export async function requireAuth(): Promise<AuthSession | NextResponse> {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   return session as unknown as AuthSession
+}
+
+/**
+ * Returns the authenticated admin session or a 401/403 NextResponse.
+ */
+export async function requireAdmin(): Promise<AuthSession | NextResponse> {
+  const result = await requireAuth()
+  if (result instanceof NextResponse) return result
+  if (result.user.role !== ADMIN_ROLE) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return result
+}
+
+/**
+ * Returns the authenticated session if the user has the given permission,
+ * or a 401/403 NextResponse.
+ */
+export async function requirePermission(permission: Permission): Promise<AuthSession | NextResponse> {
+  const result = await requireAuth()
+  if (result instanceof NextResponse) return result
+  const role = result.user.role || 'user'
+  const permissions = await getPermissionsForRole(role)
+  if (!permissions.includes(permission)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return result
 }
 
 /**

@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { quickLinks } from '@/lib/db/schema'
 import { sql as drizzleSql } from 'drizzle-orm'
 import type { QuickLink as StoreQuickLink } from '@/lib/quickLinksTypes'
-import { requireAuth, getDb, guardEmptyState } from '@/lib/api/helpers'
+import { requirePermission, getDb, guardEmptyState } from '@/lib/api/helpers'
 
 function getFaviconUrl(url: string): string {
   try {
@@ -15,7 +15,7 @@ function getFaviconUrl(url: string): string {
 }
 
 export async function GET() {
-  const auth = await requireAuth()
+  const auth = await requirePermission('quick-links')
   if (auth instanceof NextResponse) return auth
 
   try {
@@ -46,7 +46,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAuth()
+  const auth = await requirePermission('quick-links')
   if (auth instanceof NextResponse) return auth
 
   try {

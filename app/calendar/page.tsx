@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { usePagePermission } from '@/hooks/usePagePermission'
 import Header from '@/components/UI/Header'
 import CalendarFullPage from '@/components/Calendar/CalendarFullPage'
 import CalendarMobile from '@/components/Mobile/Calendar/CalendarMobile'
@@ -12,6 +13,7 @@ export default function CalendarPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { allowed, isChecking } = usePagePermission('calendar')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -19,7 +21,7 @@ export default function CalendarPage() {
     }
   }, [status, router])
 
-  if (status === 'loading') {
+  if (status === 'loading' || isChecking) {
     return (
       <div className="min-h-screen bg-squarage-green flex items-center justify-center">
         <div className="text-center">
@@ -30,7 +32,7 @@ export default function CalendarPage() {
     )
   }
 
-  if (status === 'unauthenticated') {
+  if (status === 'unauthenticated' || !allowed) {
     return null
   }
 

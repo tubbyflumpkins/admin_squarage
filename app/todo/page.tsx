@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { usePagePermission } from '@/hooks/usePagePermission'
 import Header from '@/components/UI/Header'
 import TodoFullPage from '@/components/TodoList/TodoFullPage'
 import TodoListMobile from '@/components/Mobile/Todo/TodoListMobile'
@@ -12,6 +13,7 @@ export default function TodoPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { allowed, isChecking } = usePagePermission('todo')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -19,7 +21,7 @@ export default function TodoPage() {
     }
   }, [status, router])
 
-  if (status === 'loading') {
+  if (status === 'loading' || isChecking) {
     return (
       <div className="min-h-screen bg-squarage-green flex items-center justify-center">
         <div className="text-center">
@@ -30,7 +32,7 @@ export default function TodoPage() {
     )
   }
 
-  if (status === 'unauthenticated') {
+  if (status === 'unauthenticated' || !allowed) {
     return null
   }
 

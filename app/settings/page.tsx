@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import Header from '@/components/UI/Header'
 import MobileLayout from '@/components/Mobile/Layout/MobileLayout'
+import UserManagement from '@/components/Settings/UserManagement'
+import RolePermissions from '@/components/Settings/RolePermissions'
 import { User, Lock, Save, Eye, EyeOff, Check, X, LogOut } from 'lucide-react'
 
 export default function SettingsPage() {
@@ -224,8 +226,8 @@ export default function SettingsPage() {
             {/* Message */}
             {message && (
               <div className={`flex items-center gap-2 p-3 rounded-lg ${
-                message.type === 'success' 
-                  ? 'bg-green-500/20 border border-green-500/50 text-green-700' 
+                message.type === 'success'
+                  ? 'bg-green-500/20 border border-green-500/50 text-green-700'
                   : 'bg-red-500/20 border border-red-500/50 text-red-700'
               }`}>
                 {message.type === 'success' ? (
@@ -258,6 +260,14 @@ export default function SettingsPage() {
           </form>
         </div>
       </div>
+
+      {/* Admin Sections - only visible to admin users */}
+      {(session.user as { role?: string })?.role === 'admin' && (
+        <>
+          <UserManagement currentUserId={(session.user as { id: string }).id} />
+          <RolePermissions />
+        </>
+      )}
 
     </div>
   )

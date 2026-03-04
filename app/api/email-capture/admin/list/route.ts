@@ -1,21 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
+import { requirePermission } from '@/lib/api/helpers'
 import { db } from '@/lib/db'
 import { emailSubscribers } from '@/lib/db/schema'
 import { desc } from 'drizzle-orm'
 
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions)
-
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { success: false, message: 'Unauthorized - Please login' },
-        { status: 401 }
-      )
-    }
+    // Check authentication and email permission
+    const auth = await requirePermission('email')
+    if (auth instanceof NextResponse) return auth
 
     // Optional query parameters for pagination
     const searchParams = request.nextUrl.searchParams

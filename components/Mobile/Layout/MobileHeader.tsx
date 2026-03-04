@@ -3,15 +3,38 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Menu, X, Home, ListTodo, TrendingUp, Receipt, Calendar, Settings, LogOut, User } from 'lucide-react'
+import { Menu, X, Home, ListTodo, TrendingUp, Receipt, Calendar, Settings, LogOut, StickyNote, Link2, Mail } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
+import { usePermissions } from '@/hooks/usePermissions'
+import type { Permission } from '@/lib/permissionKeys'
+import type { LucideIcon } from 'lucide-react'
+
+interface MobileNavLink {
+  href: string
+  label: string
+  icon: LucideIcon
+  permission: Permission | null
+  activeColor: string
+}
+
+const MOBILE_NAV_LINKS: MobileNavLink[] = [
+  { href: '/', label: 'Dashboard', icon: Home, permission: null, activeColor: 'squarage-green' },
+  { href: '/todo', label: 'Todo List', icon: ListTodo, permission: 'todo', activeColor: 'squarage-green' },
+  { href: '/sales', label: 'Sales Tracker', icon: TrendingUp, permission: 'sales', activeColor: 'squarage-orange' },
+  { href: '/expenses', label: 'Expenses', icon: Receipt, permission: 'expenses', activeColor: 'squarage-orange' },
+  { href: '/calendar', label: 'Calendar', icon: Calendar, permission: 'calendar', activeColor: 'squarage-green' },
+  { href: '/notes', label: 'Notes', icon: StickyNote, permission: 'notes', activeColor: 'squarage-green' },
+  { href: '/quick-links', label: 'Quick Links', icon: Link2, permission: 'quick-links', activeColor: 'squarage-green' },
+  { href: '/email', label: 'Email', icon: Mail, permission: 'email', activeColor: 'squarage-green' },
+]
 
 export default function MobileHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const pathname = usePathname()
   const { data: session } = useSession()
+  const { hasPermission } = usePermissions()
 
   // Handle menu open/close with animation
   const toggleMenu = () => {
@@ -29,6 +52,10 @@ export default function MobileHeader() {
     setIsAnimating(false)
     setTimeout(() => setIsMenuOpen(false), 300)
   }, [pathname])
+
+  const visibleLinks = MOBILE_NAV_LINKS.filter(
+    link => !link.permission || hasPermission(link.permission)
+  )
 
   return (
     <header className="bg-squarage-green backdrop-blur-sm border-b border-white/20">
@@ -51,14 +78,14 @@ export default function MobileHeader() {
           className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-all duration-300 backdrop-blur-sm"
         >
           <div className="relative w-5 h-5">
-            <Menu 
-              size={20} 
+            <Menu
+              size={20}
               className={`text-white absolute transition-all duration-300 ${
                 isMenuOpen ? 'rotate-90 opacity-0 scale-75' : 'rotate-0 opacity-100 scale-100'
               }`}
             />
-            <X 
-              size={20} 
+            <X
+              size={20}
               className={`text-white absolute transition-all duration-300 ${
                 isMenuOpen ? 'rotate-0 opacity-100 scale-100' : '-rotate-90 opacity-0 scale-75'
               }`}
@@ -71,18 +98,18 @@ export default function MobileHeader() {
       {isMenuOpen && (
         <>
           {/* Backdrop overlay */}
-          <div 
+          <div
             className={`fixed inset-0 transition-opacity duration-300 z-40 ${
               isAnimating ? 'opacity-100' : 'opacity-0'
             }`}
             onClick={toggleMenu}
           />
-          
+
           {/* Menu content - cream colored card with animation */}
-          <div 
+          <div
             className={`absolute top-full left-0 right-0 mt-2 mx-4 overflow-hidden rounded-xl transition-all duration-300 ease-out z-50 ${
-              isAnimating 
-                ? 'opacity-100 translate-y-0 scale-100' 
+              isAnimating
+                ? 'opacity-100 translate-y-0 scale-100'
                 : 'opacity-0 -translate-y-2 scale-95'
             }`}
           >
@@ -108,76 +135,27 @@ export default function MobileHeader() {
                     <div className="mx-4 mb-2 border-t border-gray-200" />
                   </>
                 )}
-                
-                {/* Dashboard Link */}
-                <Link
-                  href="/"
-                  onClick={toggleMenu}
-                  className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
-                    pathname === '/' 
-                      ? 'bg-squarage-green/10 text-squarage-green' 
-                      : 'hover:bg-gray-100 text-squarage-black'
-                  }`}
-                >
-                  <Home size={18} className={pathname === '/' ? 'text-squarage-green' : 'text-gray-600'} />
-                  <span className="font-medium">Dashboard</span>
-                </Link>
 
-                {/* Todo List Link */}
-                <Link
-                  href="/todo"
-                  onClick={toggleMenu}
-                  className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
-                    pathname === '/todo' 
-                      ? 'bg-squarage-green/10 text-squarage-green' 
-                      : 'hover:bg-gray-100 text-squarage-black'
-                  }`}
-                >
-                  <ListTodo size={18} className={pathname === '/todo' ? 'text-squarage-green' : 'text-gray-600'} />
-                  <span className="font-medium">Todo List</span>
-                </Link>
-
-                {/* Sales Tracker Link */}
-                <Link
-                  href="/sales"
-                  onClick={toggleMenu}
-                  className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
-                    pathname === '/sales' 
-                      ? 'bg-squarage-orange/10 text-squarage-orange' 
-                      : 'hover:bg-gray-100 text-squarage-black'
-                  }`}
-                >
-                  <TrendingUp size={18} className={pathname === '/sales' ? 'text-squarage-orange' : 'text-gray-600'} />
-                  <span className="font-medium">Sales Tracker</span>
-                </Link>
-
-                {/* Expenses Link */}
-                <Link
-                  href="/expenses"
-                  onClick={toggleMenu}
-                  className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
-                    pathname === '/expenses'
-                      ? 'bg-squarage-orange/10 text-squarage-orange'
-                      : 'hover:bg-gray-100 text-squarage-black'
-                  }`}
-                >
-                  <Receipt size={18} className={pathname === '/expenses' ? 'text-squarage-orange' : 'text-gray-600'} />
-                  <span className="font-medium">Expenses</span>
-                </Link>
-
-                {/* Calendar Link */}
-                <Link
-                  href="/calendar"
-                  onClick={toggleMenu}
-                  className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
-                    pathname === '/calendar' 
-                      ? 'bg-squarage-green/10 text-squarage-green' 
-                      : 'hover:bg-gray-100 text-squarage-black'
-                  }`}
-                >
-                  <Calendar size={18} className={pathname === '/calendar' ? 'text-squarage-green' : 'text-gray-600'} />
-                  <span className="font-medium">Calendar</span>
-                </Link>
+                {/* Nav Links */}
+                {visibleLinks.map(link => {
+                  const Icon = link.icon
+                  const isActive = pathname === link.href
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={toggleMenu}
+                      className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
+                        isActive
+                          ? `bg-${link.activeColor}/10 text-${link.activeColor}`
+                          : 'hover:bg-gray-100 text-squarage-black'
+                      }`}
+                    >
+                      <Icon size={18} className={isActive ? `text-${link.activeColor}` : 'text-gray-600'} />
+                      <span className="font-medium">{link.label}</span>
+                    </Link>
+                  )
+                })}
 
                 {/* Divider */}
                 <div className="mx-4 my-2 border-t border-gray-200" />
@@ -187,8 +165,8 @@ export default function MobileHeader() {
                   href="/settings"
                   onClick={toggleMenu}
                   className={`w-full px-4 py-3 flex items-center gap-3 transition-colors ${
-                    pathname === '/settings' 
-                      ? 'bg-squarage-green/10 text-squarage-green' 
+                    pathname === '/settings'
+                      ? 'bg-squarage-green/10 text-squarage-green'
                       : 'hover:bg-gray-100 text-squarage-black'
                   }`}
                 >

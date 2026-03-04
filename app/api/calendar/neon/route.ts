@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db, isDatabaseConfigured } from '@/lib/db'
 import { calendarEvents, calendarTypes, eventReminders } from '@/lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
+import { requirePermission } from '@/lib/api/helpers'
 
 // GET: Fetch all calendar data
 export async function GET() {
   try {
+    const auth = await requirePermission('calendar')
+    if (auth instanceof NextResponse) return auth
+
     // Check if database is configured
     if (!isDatabaseConfigured() || !db) {
       return NextResponse.json({
@@ -44,6 +48,9 @@ export async function GET() {
 // POST: Save calendar data using UPSERT pattern
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requirePermission('calendar')
+    if (auth instanceof NextResponse) return auth
+
     const data = await request.json()
 
     // Check if database is configured

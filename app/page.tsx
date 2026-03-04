@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useDashboardData } from '@/hooks/useDashboardData'
+import { usePermissions } from '@/hooks/usePermissions'
 import Header from '@/components/UI/Header'
 import TodoWidget from '@/components/TodoList/TodoWidget'
 import SalesWidget from '@/components/SalesList/SalesWidget'
@@ -17,6 +18,7 @@ export default function Home() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { hasPermission } = usePermissions()
 
   // Load all dashboard data in a single API call
   useDashboardData()
@@ -66,16 +68,14 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-squarage-green">
       <Header />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Widgets grid - ready for future widgets */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* READ-ONLY widget that cannot modify database */}
-          <TodoWidget />
-          <SalesWidget />
-          <CalendarWidget />
-          <QuickLinksWidget />
-          <NotesWidget />
+          {hasPermission('todo') && <TodoWidget />}
+          {hasPermission('sales') && <SalesWidget />}
+          {hasPermission('calendar') && <CalendarWidget />}
+          {hasPermission('quick-links') && <QuickLinksWidget />}
+          {hasPermission('notes') && <NotesWidget />}
         </div>
       </main>
     </div>

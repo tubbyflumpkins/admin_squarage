@@ -3,8 +3,11 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import UserAvatar from '@/components/UI/UserAvatar'
+import { usePermissions } from '@/hooks/usePermissions'
+import { NAV_LINKS } from '@/lib/permissionKeys'
 
 export default function Header() {
+  const { hasPermission } = usePermissions()
 
   return (
     <header className="bg-squarage-green border-b-4 border-squarage-white/20">
@@ -21,54 +24,15 @@ export default function Header() {
             />
           </Link>
           <nav className="flex items-center space-x-6">
-            <Link 
-              href="/" 
-              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
-            >
-              Dashboard
-            </Link>
-            <Link 
-              href="/todo" 
-              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
-            >
-              Todo List
-            </Link>
-            <Link 
-              href="/sales" 
-              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
-            >
-              Sales Tracker
-            </Link>
-            <Link
-              href="/expenses"
-              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
-            >
-              Expenses
-            </Link>
-            <Link 
-              href="/calendar" 
-              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
-            >
-              Calendar
-            </Link>
-            <Link
-              href="/notes"
-              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
-            >
-              Notes
-            </Link>
-            <Link
-              href="/quick-links"
-              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
-            >
-              Quick Links
-            </Link>
-            <Link
-              href="/email"
-              className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
-            >
-              Email
-            </Link>
+            {NAV_LINKS.filter(link => !link.permission || hasPermission(link.permission)).map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-squarage-white hover:text-squarage-yellow transition-colors duration-200 font-medium"
+              >
+                {link.label}
+              </Link>
+            ))}
             <div className="flex items-center space-x-3 ml-2">
               <UserAvatar />
             </div>

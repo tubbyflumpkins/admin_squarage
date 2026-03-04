@@ -1,23 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { db, isDatabaseConfigured } from '@/lib/db'
 import { notes } from '@/lib/db/schema'
 import { eq, desc, or, isNull } from 'drizzle-orm'
+import { requirePermission } from '@/lib/api/helpers'
 
 // GET - Fetch notes for the current user (+ optionally a shared note by ID)
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requirePermission('notes')
+    if (auth instanceof NextResponse) return auth
 
     if (!isDatabaseConfigured() || !db) {
       return NextResponse.json({ notes: [], sharedNote: null })
     }
 
-    const userId = (session.user as { id?: string })?.id
+    const userId = auth.user.id
 
     // Fetch notes belonging to this user OR notes without a userId (legacy)
     const userNotes = userId
@@ -72,10 +69,8 @@ export async function GET(request: NextRequest) {
 // POST - Create a new note
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requirePermission('notes')
+    if (auth instanceof NextResponse) return auth
 
     if (!isDatabaseConfigured() || !db) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
@@ -83,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { id, title, content } = body
-    const userId = (session.user as { id?: string })?.id
+    const userId = auth.user.id
 
     if (!id || !title) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -109,10 +104,8 @@ export async function POST(request: NextRequest) {
 // PUT - Update an existing note
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requirePermission('notes')
+    if (auth instanceof NextResponse) return auth
 
     if (!isDatabaseConfigured() || !db) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
@@ -143,10 +136,8 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete a note (only own notes)
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const auth = await requirePermission('notes')
+    if (auth instanceof NextResponse) return auth
 
     if (!isDatabaseConfigured() || !db) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
