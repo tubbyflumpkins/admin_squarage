@@ -80,6 +80,8 @@ admin_squarage/
 │   ├── useDropdown.ts         # Shared dropdown hook (portal/inline positioning, click-outside)
 │   ├── useInlineEdit.ts       # Shared inline edit hook (click-outside, Enter/Escape)
 │   ├── useIsMobile.ts         # Mobile detection
+│   ├── usePermissions.ts      # Client-side RBAC permission hook
+│   ├── usePagePermission.ts   # Page-level permission guard with redirect
 │   ├── usePWA.ts              # PWA utilities
 │   └── useDashboardData.ts    # Dashboard data loading
 ├── lib/
@@ -92,8 +94,10 @@ admin_squarage/
 │   ├── quickLinksStore.ts     # Quick links store (uses createEntityStoreSlice)
 │   ├── notesStore.ts          # Notes store (per-note save, different pattern)
 │   ├── dashboardStore.ts      # Unified dashboard data management
+│   ├── permissionKeys.ts      # RBAC permission constants (client-safe)
+│   ├── permissions.server.ts  # Server-side permission queries with caching
 │   ├── api/
-│   │   └── helpers.ts         # Shared API route helpers (requireAuth, getDb, etc.)
+│   │   └── helpers.ts         # Shared API route helpers (requireAuth, requirePermission, etc.)
 │   ├── db/
 │   │   ├── index.ts           # Neon database connection (singleton)
 │   │   └── schema.ts          # Drizzle ORM schema
@@ -431,6 +435,32 @@ Shared glassmorphism widget wrapper for all 5 dashboard widgets:
 This dashboard is production-ready and deployed on Vercel with full CRUD for todos, sales, calendar, notes, quick links, and expenses.
 
 ## Recent Major Updates
+
+### RBAC Permission System (March 2026)
+- **Per-role permissions**: Each role (admin, user, creator) has configurable page/widget access
+- **Permission keys**: `todo`, `sales`, `calendar`, `notes`, `quick-links`, `expenses`, `email`
+- **Database**: `role_permissions` table stores role-to-permission mappings
+- **Server-side enforcement**: `requirePermission(key)` in API routes returns 403 for unauthorized access
+- **Admin bypass**: Admin role always has full access (hardcoded, not stored in DB)
+- **Client-side hooks**: `usePermissions()` for checking access, `usePagePermission(key)` for page guards
+- **Navigation filtering**: Header, MobileHeader, and MobileTabBar hide links to unauthorized pages
+- **Dashboard widgets**: Only permitted widgets render on the dashboard
+- **Admin Settings UI**: User management table + role permission toggles in `/settings` (admin-only)
+- **Default roles**: `user` (all permissions), `creator` (todo, calendar, notes, quick-links only)
+- **Permission caching**: 60s in-memory cache per Vercel function instance
+- **Graceful degradation**: DB unavailable → all permissions granted
+- **Key files**:
+  - `lib/permissionKeys.ts` - Permission constants and types (client-safe)
+  - `lib/permissions.server.ts` - Server-side permission queries with caching
+  - `lib/api/helpers.ts` - `requireAdmin()`, `requirePermission()` helpers
+  - `hooks/usePermissions.ts` - Client-side permission hook
+  - `hooks/usePagePermission.ts` - Page-level guard with redirect
+  - `app/api/permissions/route.ts` - Returns current user's permissions
+  - `app/api/admin/roles/route.ts` - Admin role permission management
+  - `app/api/admin/users/route.ts` - Admin user CRUD
+  - `components/Settings/UserManagement.tsx` - User management UI
+  - `components/Settings/RolePermissions.tsx` - Permission toggle UI
+  - `scripts/seed-role-permissions.ts` - Seed default role permissions
 
 ### 2026 Streamline & Modernize (February 2026)
 - **Shared Hooks**: `useDropdown` (10 dropdowns), `useInlineEdit` (4 editable components)
