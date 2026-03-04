@@ -192,6 +192,14 @@ export const emailSubscribers = pgTable('email_subscribers', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+// Role Permissions table
+export const rolePermissions = pgTable('role_permissions', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  role: varchar('role', { length: 50 }).notNull(),
+  permission: varchar('permission', { length: 50 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // ============= RELATIONS DEFINITIONS (must come after all table definitions) =============
 
 // User relations
@@ -390,3 +398,5 @@ export type EmailSend = typeof emailSends.$inferSelect
 export type NewEmailSend = typeof emailSends.$inferInsert
 export type EmailQueue = typeof emailQueue.$inferSelect
 export type NewEmailQueue = typeof emailQueue.$inferInsert
+export type RolePermission = typeof rolePermissions.$inferSelect
+export type NewRolePermission = typeof rolePermissions.$inferInsert
