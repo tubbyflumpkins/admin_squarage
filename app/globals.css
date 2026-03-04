@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Soap Font (logo) - @font-face needed for SVG text elements */
+@font-face {
+  font-family: 'Soap Regular';
+  src: url('/fonts/Soap Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
 @layer base {
   body {
     @apply text-squarage-black;
