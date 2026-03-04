@@ -4,7 +4,7 @@ import { sales, saleSubtasks, collections, products, saleChannels } from '@/lib/
 import { eq, desc } from 'drizzle-orm'
 import type { Sale as StoreSale, SaleSubtask as StoreSaleSubtask, Collection as StoreCollection, Product as StoreProduct, SaleChannel as StoreSaleChannel } from '@/lib/salesTypes'
 import {
-  requireAuth,
+  requirePermission,
   getDb,
   deleteByIds,
   readJsonFallback,
@@ -58,7 +58,7 @@ const normalizeAvailableColors = (
 }
 
 export async function GET() {
-  const auth = await requireAuth()
+  const auth = await requirePermission('sales')
   if (auth instanceof NextResponse) return auth
 
   try {
@@ -162,7 +162,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAuth()
+  const auth = await requirePermission('sales')
   if (auth instanceof NextResponse) return auth
 
   try {

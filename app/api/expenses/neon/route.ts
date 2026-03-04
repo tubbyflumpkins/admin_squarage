@@ -4,7 +4,7 @@ import { expenses, expenseCategories, expensePaidBy } from '@/lib/db/schema'
 import { eq, desc } from 'drizzle-orm'
 import type { Expense as StoreExpense } from '@/lib/expenseTypes'
 import {
-  requireAuth,
+  requirePermission,
   getDb,
   deleteByIds,
   readJsonFallback,
@@ -26,7 +26,7 @@ async function fallbackToJsonFile() {
 }
 
 export async function GET() {
-  const auth = await requireAuth()
+  const auth = await requirePermission('expenses')
   if (auth instanceof NextResponse) return auth
 
   try {
@@ -64,7 +64,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAuth()
+  const auth = await requirePermission('expenses')
   if (auth instanceof NextResponse) return auth
 
   try {
