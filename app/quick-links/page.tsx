@@ -3,12 +3,14 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { usePagePermission } from '@/hooks/usePagePermission'
 import Header from '@/components/UI/Header'
 import QuickLinksGrid from '@/components/QuickLinks/QuickLinksGrid'
 
 export default function QuickLinksPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { allowed, isChecking } = usePagePermission('quick-links')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -16,7 +18,7 @@ export default function QuickLinksPage() {
     }
   }, [status, router])
 
-  if (status === 'loading') {
+  if (status === 'loading' || isChecking) {
     return (
       <div className="min-h-screen bg-squarage-green flex items-center justify-center">
         <div className="text-center">
@@ -27,7 +29,7 @@ export default function QuickLinksPage() {
     )
   }
 
-  if (status === 'unauthenticated' || !session) {
+  if (status === 'unauthenticated' || !session || !allowed) {
     return null
   }
 

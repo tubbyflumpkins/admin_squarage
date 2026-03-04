@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { usePagePermission } from '@/hooks/usePagePermission'
 import Header from '@/components/UI/Header'
 import ExpenseFullPage from '@/components/ExpensesList/ExpenseFullPage'
 import ExpensesListMobile from '@/components/Mobile/Expenses/ExpensesListMobile'
@@ -12,6 +13,7 @@ export default function ExpensesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { allowed, isChecking } = usePagePermission('expenses')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -19,7 +21,7 @@ export default function ExpensesPage() {
     }
   }, [status, router])
 
-  if (status === 'loading') {
+  if (status === 'loading' || isChecking) {
     return (
       <div className="min-h-screen bg-squarage-green flex items-center justify-center">
         <div className="text-center">
@@ -30,7 +32,7 @@ export default function ExpensesPage() {
     )
   }
 
-  if (status === 'unauthenticated' || !session) {
+  if (status === 'unauthenticated' || !session || !allowed) {
     return null
   }
 

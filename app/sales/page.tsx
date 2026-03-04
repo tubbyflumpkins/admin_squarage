@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { usePagePermission } from '@/hooks/usePagePermission'
 import Header from '@/components/UI/Header'
 import SalesFullPage from '@/components/SalesList/SalesFullPage'
 import SalesListMobile from '@/components/Mobile/Sales/SalesListMobile'
@@ -12,6 +13,7 @@ export default function SalesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { allowed, isChecking } = usePagePermission('sales')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -19,7 +21,7 @@ export default function SalesPage() {
     }
   }, [status, router])
 
-  if (status === 'loading') {
+  if (status === 'loading' || isChecking) {
     return (
       <div className="min-h-screen bg-squarage-green flex items-center justify-center">
         <div className="text-center">
@@ -30,7 +32,7 @@ export default function SalesPage() {
     )
   }
 
-  if (status === 'unauthenticated') {
+  if (status === 'unauthenticated' || !allowed) {
     return null
   }
 

@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, Suspense } from 'react'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { usePagePermission } from '@/hooks/usePagePermission'
 import Header from '@/components/UI/Header'
 import NotesFullPage from '@/components/Notes/NotesFullPage'
 
@@ -11,6 +12,7 @@ export default function NotesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const isMobile = useIsMobile()
+  const { allowed, isChecking } = usePagePermission('notes')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -18,7 +20,7 @@ export default function NotesPage() {
     }
   }, [status, router])
 
-  if (status === 'loading') {
+  if (status === 'loading' || isChecking) {
     return (
       <div className="min-h-screen bg-squarage-green flex items-center justify-center">
         <div className="text-center">
@@ -29,7 +31,7 @@ export default function NotesPage() {
     )
   }
 
-  if (status === 'unauthenticated') {
+  if (status === 'unauthenticated' || !allowed) {
     return null
   }
 
