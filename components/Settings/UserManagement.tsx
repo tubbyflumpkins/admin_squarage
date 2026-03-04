@@ -13,6 +13,7 @@ interface UserRecord {
 
 export default function UserManagement({ currentUserId }: { currentUserId: string }) {
   const [users, setUsers] = useState<UserRecord[]>([])
+  const [roleNames, setRoleNames] = useState<string[]>(['admin', 'user', 'creator'])
   const [isLoading, setIsLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [newName, setNewName] = useState('')
@@ -24,7 +25,18 @@ export default function UserManagement({ currentUserId }: { currentUserId: strin
 
   useEffect(() => {
     fetchUsers()
+    fetchRoleNames()
   }, [])
+
+  async function fetchRoleNames() {
+    try {
+      const res = await fetch('/api/admin/roles')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.roleNames) setRoleNames(data.roleNames)
+      }
+    } catch { /* use defaults */ }
+  }
 
   async function fetchUsers() {
     try {
@@ -159,9 +171,9 @@ export default function UserManagement({ currentUserId }: { currentUserId: strin
                 onChange={e => setNewRole(e.target.value)}
                 className="px-3 py-2 bg-white/70 border border-brown-light/30 rounded-lg text-brown-dark text-sm focus:outline-none focus:ring-2 focus:ring-squarage-green"
               >
-                <option value="user">User</option>
-                <option value="creator">Creator</option>
-                <option value="admin">Admin</option>
+                {roleNames.map(role => (
+                  <option key={role} value={role}>{role}</option>
+                ))}
               </select>
             </div>
             <button

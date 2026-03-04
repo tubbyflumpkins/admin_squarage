@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin, getDb } from '@/lib/api/helpers'
-import { rolePermissions } from '@/lib/db/schema'
+import { rolePermissions, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { ADMIN_ROLE, ALL_PERMISSIONS, type Permission } from '@/lib/permissionKeys'
 import { invalidatePermissionCache } from '@/lib/permissions.server'
@@ -12,24 +12,36 @@ export async function GET() {
 
   const db = getDb()
   if (!db) {
-    return NextResponse.json({ roles: {} })
+    return NextResponse.json({ roles: {}, roleNames: ['admin', 'user', 'creator'] })
   }
 
-  const rows = await db.select().from(rolePermissions)
+  const [permRows, userRows] = await Promise.all([
+    db.select().from(rolePermissions),
+    db.select({ role: users.role }).from(users),
+  ])
 
-  // Group by role
+  // Group permissions by role
   const roles: Record<string, string[]> = {}
-  for (const row of rows) {
+  for (const row of permRows) {
     if (!roles[row.role]) roles[row.role] = []
     roles[row.role].push(row.permission)
   }
 
-  // Always include known roles even if they have no DB entries yet
-  if (!roles['user']) roles['user'] = [...ALL_PERMISSIONS]
-  if (!roles['creator']) roles['creator'] = []
+  // Collect all role names from: permission table, users table, and hardcoded defaults
+  const roleNameSet = new Set<string>(['admin', 'user', 'creator'])
+  for (const key of Object.keys(roles)) roleNameSet.add(key)
+  for (const row of userRows) roleNameSet.add(row.role)
+
+  // Ensure every role has an entry (empty array if no permissions set)
+  for (const name of roleNameSet) {
+    if (!roles[name]) roles[name] = name === 'user' ? [...ALL_PERMISSIONS] : []
+  }
   roles[ADMIN_ROLE] = [...ALL_PERMISSIONS]
 
-  return NextResponse.json({ roles })
+  // Sorted role names: admin first, then alphabetical
+  const roleNames = [ADMIN_ROLE, ...([...roleNameSet].filter(r => r !== ADMIN_ROLE).sort())]
+
+  return NextResponse.json({ roles, roleNames })
 }
 
 export async function POST(request: Request) {

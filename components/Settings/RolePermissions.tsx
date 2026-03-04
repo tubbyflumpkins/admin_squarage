@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Shield, Save, Plus, X } from 'lucide-react'
+import { Shield, Save, Settings, Plus, Trash2 } from 'lucide-react'
 import { ALL_PERMISSIONS, ADMIN_ROLE, type Permission } from '@/lib/permissionKeys'
 
 const PERMISSION_LABELS: Record<Permission, string> = {
@@ -14,13 +14,17 @@ const PERMISSION_LABELS: Record<Permission, string> = {
   'email': 'Email',
 }
 
+// Roles that can't be deleted (always exist)
+const PROTECTED_ROLES = new Set(['admin', 'user', 'creator'])
+
 export default function RolePermissions() {
   const [roles, setRoles] = useState<Record<string, string[]>>({})
+  const [roleNames, setRoleNames] = useState<string[]>([])
   const [selectedRole, setSelectedRole] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [showNewRole, setShowNewRole] = useState(false)
+  const [showManageRoles, setShowManageRoles] = useState(false)
   const [newRoleName, setNewRoleName] = useState('')
 
   useEffect(() => {
@@ -33,10 +37,11 @@ export default function RolePermissions() {
       if (res.ok) {
         const data = await res.json()
         setRoles(data.roles)
-        // Auto-select first non-admin role
-        const nonAdminRoles = Object.keys(data.roles).filter(r => r !== ADMIN_ROLE)
-        if (nonAdminRoles.length > 0 && !selectedRole) {
-          setSelectedRole(nonAdminRoles[0])
+        setRoleNames(data.roleNames || Object.keys(data.roles))
+        // Auto-select first non-admin role if nothing selected
+        if (!selectedRole) {
+          const nonAdmin = (data.roleNames || Object.keys(data.roles)).filter((r: string) => r !== ADMIN_ROLE)
+          if (nonAdmin.length > 0) setSelectedRole(nonAdmin[0])
         }
       }
     } catch {
@@ -47,12 +52,32 @@ export default function RolePermissions() {
   }
 
   function handleAddRole() {
-    const name = newRoleName.trim().toLowerCase()
-    if (!name || name === ADMIN_ROLE || roles[name]) return
+    const name = newRoleName.trim().toLowerCase().replace(/\s+/g, '-')
+    if (!name || roleNames.includes(name)) return
+    setRoleNames(prev => [...prev, name])
     setRoles(prev => ({ ...prev, [name]: [] }))
     setSelectedRole(name)
     setNewRoleName('')
-    setShowNewRole(false)
+  }
+
+  function handleDeleteRole(role: string) {
+    if (PROTECTED_ROLES.has(role)) return
+    setRoleNames(prev => prev.filter(r => r !== role))
+    setRoles(prev => {
+      const next = { ...prev }
+      delete next[role]
+      return next
+    })
+    if (selectedRole === role) {
+      const remaining = roleNames.filter(r => r !== role && r !== ADMIN_ROLE)
+      setSelectedRole(remaining[0] || '')
+    }
+    // Save empty permissions to remove from DB
+    fetch('/api/admin/roles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, permissions: [] }),
+    })
   }
 
   function togglePermission(permission: Permission) {
@@ -79,7 +104,7 @@ export default function RolePermissions() {
       })
 
       if (res.ok) {
-        setMessage({ type: 'success', text: `Permissions for "${selectedRole}" saved. Changes take effect within ~60 seconds.` })
+        setMessage({ type: 'success', text: `Permissions for "${selectedRole}" saved.` })
       } else {
         const data = await res.json()
         setMessage({ type: 'error', text: data.error || 'Failed to save permissions' })
@@ -91,10 +116,8 @@ export default function RolePermissions() {
     }
   }
 
-  const roleNames = Object.keys(roles)
   const currentPermissions = roles[selectedRole] || []
   const isAdmin = selectedRole === ADMIN_ROLE
-
   return (
     <div className="relative backdrop-blur-md bg-white/35 rounded-2xl shadow-2xl border border-white/40 p-6">
       <div className="flex items-center gap-3 mb-4">
@@ -118,60 +141,82 @@ export default function RolePermissions() {
           <div className="text-center text-brown-medium text-sm py-4">Loading roles...</div>
         ) : (
           <>
-            {/* Role selector */}
-            <div className="mb-4">
-              <label className="block text-xs font-medium text-brown-medium mb-2 uppercase tracking-wide">Select Role</label>
-              <div className="flex flex-wrap gap-2">
-                {roleNames.map(role => (
-                  <button
-                    key={role}
-                    onClick={() => { setSelectedRole(role); setMessage(null) }}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
-                      selectedRole === role
-                        ? 'bg-squarage-green text-white border-squarage-green shadow-md'
-                        : 'bg-white/60 text-brown-dark border-brown-light/30 hover:bg-white/90 hover:border-brown-light/50'
-                    }`}
-                  >
-                    {role}
-                  </button>
-                ))}
+            {/* Role dropdown + manage button */}
+            <div className="flex items-end gap-2 mb-5">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-brown-medium mb-1.5 uppercase tracking-wide">
+                  Select Role
+                </label>
+                <select
+                  value={selectedRole}
+                  onChange={e => { setSelectedRole(e.target.value); setMessage(null) }}
+                  className="w-full px-3 py-2.5 bg-white/70 border border-brown-light/30 rounded-lg text-brown-dark text-sm font-medium focus:outline-none focus:ring-2 focus:ring-squarage-green focus:border-transparent"
+                >
+                  {roleNames.map(role => (
+                    <option key={role} value={role}>
+                      {role}{role === ADMIN_ROLE ? ' (full access)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={() => setShowManageRoles(!showManageRoles)}
+                className={`p-2.5 rounded-lg border transition-all ${
+                  showManageRoles
+                    ? 'bg-squarage-green text-white border-squarage-green'
+                    : 'bg-white/60 text-brown-dark border-brown-light/30 hover:bg-white/90'
+                }`}
+                title="Manage roles"
+              >
+                <Settings className="h-4.5 w-4.5" />
+              </button>
+            </div>
 
-                {/* Add role button / inline form */}
-                {showNewRole ? (
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="text"
-                      value={newRoleName}
-                      onChange={e => setNewRoleName(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') handleAddRole(); if (e.key === 'Escape') setShowNewRole(false) }}
-                      placeholder="role name"
-                      autoFocus
-                      className="w-28 px-3 py-2 bg-white/70 border border-brown-light/30 rounded-lg text-brown-dark text-sm focus:outline-none focus:ring-2 focus:ring-squarage-green"
-                    />
-                    <button
-                      onClick={handleAddRole}
-                      className="p-2 rounded-lg bg-squarage-green text-white hover:bg-squarage-green/90 transition-all"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => { setShowNewRole(false); setNewRoleName('') }}
-                      className="p-2 rounded-lg bg-white/60 text-brown-dark hover:bg-white/90 transition-all"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
+            {/* Manage Roles Panel */}
+            {showManageRoles && (
+              <div className="mb-5 p-3 bg-white/40 rounded-lg border border-brown-light/20">
+                <h3 className="text-xs font-medium text-brown-medium uppercase tracking-wide mb-2">Manage Roles</h3>
+                <div className="space-y-1.5 mb-3">
+                  {roleNames.map(role => (
+                    <div key={role} className="flex items-center justify-between px-2 py-1.5 rounded">
+                      <span className="text-sm text-brown-dark">
+                        {role}
+                        {PROTECTED_ROLES.has(role) && (
+                          <span className="ml-1.5 text-xs text-brown-medium">(built-in)</span>
+                        )}
+                      </span>
+                      {!PROTECTED_ROLES.has(role) && (
+                        <button
+                          onClick={() => handleDeleteRole(role)}
+                          className="p-1 text-red-500 hover:text-red-700 transition-colors"
+                          title="Delete role"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newRoleName}
+                    onChange={e => setNewRoleName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleAddRole() }}
+                    placeholder="New role name"
+                    className="flex-1 px-3 py-1.5 bg-white/70 border border-brown-light/30 rounded-lg text-brown-dark text-sm focus:outline-none focus:ring-2 focus:ring-squarage-green"
+                  />
                   <button
-                    onClick={() => setShowNewRole(true)}
-                    className="px-3 py-2 rounded-lg text-sm font-medium border border-dashed border-brown-light/40 text-brown-medium hover:border-squarage-green hover:text-squarage-green transition-all flex items-center gap-1"
+                    onClick={handleAddRole}
+                    disabled={!newRoleName.trim()}
+                    className="px-3 py-1.5 bg-squarage-green text-white rounded-lg text-sm font-medium hover:bg-squarage-green/90 disabled:opacity-40 transition-all flex items-center gap-1"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    Add Role
+                    Add
                   </button>
-                )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Permission Toggles */}
             {selectedRole && (
@@ -214,7 +259,7 @@ export default function RolePermissions() {
                       className="flex items-center gap-2 px-5 py-2.5 bg-squarage-green text-white rounded-lg text-sm font-semibold hover:bg-squarage-green/90 disabled:opacity-50 transition-all"
                     >
                       <Save className="h-4 w-4" />
-                      {isSaving ? 'Saving...' : `Save ${selectedRole} Permissions`}
+                      {isSaving ? 'Saving...' : 'Save Permissions'}
                     </button>
                   </div>
                 )}
@@ -222,9 +267,6 @@ export default function RolePermissions() {
                   <p className="mt-3 text-xs text-brown-medium">Admin role always has full access.</p>
                 )}
               </>
-            )}
-            {!selectedRole && (
-              <p className="text-sm text-brown-medium py-4 text-center">Select a role above to configure its permissions.</p>
             )}
           </>
         )}
