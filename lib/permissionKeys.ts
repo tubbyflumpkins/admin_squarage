@@ -14,6 +14,9 @@ export type Permission = (typeof ALL_PERMISSIONS)[number]
 
 export const ADMIN_ROLE = 'admin'
 
+// Single source of truth for built-in role names
+export const DEFAULT_ROLES = ['admin', 'user', 'creator'] as const
+
 export const NAV_LINKS: { href: string; label: string; permission: Permission | null }[] = [
   { href: '/', label: 'Dashboard', permission: null },
   { href: '/todo', label: 'Todo List', permission: 'todo' },

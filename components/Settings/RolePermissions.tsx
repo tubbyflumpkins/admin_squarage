@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Shield, Save, Settings, Plus, Trash2 } from 'lucide-react'
-import { ALL_PERMISSIONS, ADMIN_ROLE, type Permission } from '@/lib/permissionKeys'
+import { ALL_PERMISSIONS, ADMIN_ROLE, DEFAULT_ROLES, type Permission } from '@/lib/permissionKeys'
 
 const PERMISSION_LABELS: Record<Permission, string> = {
   'todo': 'Todo List',
@@ -19,7 +19,7 @@ const PROTECTED_ROLES = new Set(['admin', 'user', 'creator'])
 
 export default function RolePermissions() {
   const [roles, setRoles] = useState<Record<string, string[]>>({})
-  const [roleNames, setRoleNames] = useState<string[]>([])
+  const [roleNames, setRoleNames] = useState<string[]>([...DEFAULT_ROLES])
   const [selectedRole, setSelectedRole] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
