@@ -24,7 +24,9 @@ export async function GET() {
     roles[row.role].push(row.permission)
   }
 
-  // Always include admin with all permissions
+  // Always include known roles even if they have no DB entries yet
+  if (!roles['user']) roles['user'] = [...ALL_PERMISSIONS]
+  if (!roles['creator']) roles['creator'] = []
   roles[ADMIN_ROLE] = [...ALL_PERMISSIONS]
 
   return NextResponse.json({ roles })

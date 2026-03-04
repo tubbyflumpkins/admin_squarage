@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Shield, Save } from 'lucide-react'
+import { Shield, Save, Plus, X } from 'lucide-react'
 import { ALL_PERMISSIONS, ADMIN_ROLE, type Permission } from '@/lib/permissionKeys'
 
 const PERMISSION_LABELS: Record<Permission, string> = {
@@ -16,10 +16,12 @@ const PERMISSION_LABELS: Record<Permission, string> = {
 
 export default function RolePermissions() {
   const [roles, setRoles] = useState<Record<string, string[]>>({})
-  const [selectedRole, setSelectedRole] = useState('user')
+  const [selectedRole, setSelectedRole] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [showNewRole, setShowNewRole] = useState(false)
+  const [newRoleName, setNewRoleName] = useState('')
 
   useEffect(() => {
     fetchRoles()
@@ -31,9 +33,9 @@ export default function RolePermissions() {
       if (res.ok) {
         const data = await res.json()
         setRoles(data.roles)
-        // Select first non-admin role
+        // Auto-select first non-admin role
         const nonAdminRoles = Object.keys(data.roles).filter(r => r !== ADMIN_ROLE)
-        if (nonAdminRoles.length > 0 && !nonAdminRoles.includes(selectedRole)) {
+        if (nonAdminRoles.length > 0 && !selectedRole) {
           setSelectedRole(nonAdminRoles[0])
         }
       }
@@ -42,6 +44,15 @@ export default function RolePermissions() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  function handleAddRole() {
+    const name = newRoleName.trim().toLowerCase()
+    if (!name || name === ADMIN_ROLE || roles[name]) return
+    setRoles(prev => ({ ...prev, [name]: [] }))
+    setSelectedRole(name)
+    setNewRoleName('')
+    setShowNewRole(false)
   }
 
   function togglePermission(permission: Permission) {
@@ -68,7 +79,7 @@ export default function RolePermissions() {
       })
 
       if (res.ok) {
-        setMessage({ type: 'success', text: 'Permissions saved. Changes take effect within ~60 seconds.' })
+        setMessage({ type: 'success', text: `Permissions for "${selectedRole}" saved. Changes take effect within ~60 seconds.` })
       } else {
         const data = await res.json()
         setMessage({ type: 'error', text: data.error || 'Failed to save permissions' })
@@ -107,68 +118,113 @@ export default function RolePermissions() {
           <div className="text-center text-brown-medium text-sm py-4">Loading roles...</div>
         ) : (
           <>
-            {/* Role Tabs */}
-            <div className="flex gap-2 mb-4">
-              {roleNames.map(role => (
-                <button
-                  key={role}
-                  onClick={() => setSelectedRole(role)}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                    selectedRole === role
-                      ? 'bg-squarage-green text-white'
-                      : 'bg-white/50 text-brown-dark hover:bg-white/80'
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
+            {/* Role selector */}
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-brown-medium mb-2 uppercase tracking-wide">Select Role</label>
+              <div className="flex flex-wrap gap-2">
+                {roleNames.map(role => (
+                  <button
+                    key={role}
+                    onClick={() => { setSelectedRole(role); setMessage(null) }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
+                      selectedRole === role
+                        ? 'bg-squarage-green text-white border-squarage-green shadow-md'
+                        : 'bg-white/60 text-brown-dark border-brown-light/30 hover:bg-white/90 hover:border-brown-light/50'
+                    }`}
+                  >
+                    {role}
+                  </button>
+                ))}
+
+                {/* Add role button / inline form */}
+                {showNewRole ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={newRoleName}
+                      onChange={e => setNewRoleName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleAddRole(); if (e.key === 'Escape') setShowNewRole(false) }}
+                      placeholder="role name"
+                      autoFocus
+                      className="w-28 px-3 py-2 bg-white/70 border border-brown-light/30 rounded-lg text-brown-dark text-sm focus:outline-none focus:ring-2 focus:ring-squarage-green"
+                    />
+                    <button
+                      onClick={handleAddRole}
+                      className="p-2 rounded-lg bg-squarage-green text-white hover:bg-squarage-green/90 transition-all"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => { setShowNewRole(false); setNewRoleName('') }}
+                      className="p-2 rounded-lg bg-white/60 text-brown-dark hover:bg-white/90 transition-all"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowNewRole(true)}
+                    className="px-3 py-2 rounded-lg text-sm font-medium border border-dashed border-brown-light/40 text-brown-medium hover:border-squarage-green hover:text-squarage-green transition-all flex items-center gap-1"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add Role
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Permission Toggles */}
-            <div className="space-y-2">
-              {ALL_PERMISSIONS.map(permission => {
-                const enabled = isAdmin || currentPermissions.includes(permission)
-                return (
-                  <div
-                    key={permission}
-                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/30 transition-colors"
-                  >
-                    <span className="text-sm text-brown-dark font-medium">
-                      {PERMISSION_LABELS[permission]}
-                    </span>
+            {selectedRole && (
+              <>
+                <div className="space-y-1">
+                  {ALL_PERMISSIONS.map(permission => {
+                    const enabled = isAdmin || currentPermissions.includes(permission)
+                    return (
+                      <div
+                        key={permission}
+                        className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/30 transition-colors"
+                      >
+                        <span className="text-sm text-brown-dark font-medium">
+                          {PERMISSION_LABELS[permission]}
+                        </span>
+                        <button
+                          onClick={() => togglePermission(permission)}
+                          disabled={isAdmin}
+                          className={`relative w-11 h-6 rounded-full transition-colors ${
+                            enabled ? 'bg-squarage-green' : 'bg-gray-300'
+                          } ${isAdmin ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                              enabled ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Save Button */}
+                {!isAdmin && (
+                  <div className="mt-4 flex justify-end">
                     <button
-                      onClick={() => togglePermission(permission)}
-                      disabled={isAdmin}
-                      className={`relative w-10 h-5 rounded-full transition-colors ${
-                        enabled ? 'bg-squarage-green' : 'bg-gray-300'
-                      } ${isAdmin ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-squarage-green text-white rounded-lg text-sm font-semibold hover:bg-squarage-green/90 disabled:opacity-50 transition-all"
                     >
-                      <span
-                        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                          enabled ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
+                      <Save className="h-4 w-4" />
+                      {isSaving ? 'Saving...' : `Save ${selectedRole} Permissions`}
                     </button>
                   </div>
-                )
-              })}
-            </div>
-
-            {/* Save Button */}
-            {!isAdmin && (
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="flex items-center gap-2 px-4 py-2 bg-squarage-green text-white rounded-lg text-sm font-medium hover:bg-squarage-green/90 disabled:opacity-50 transition-all"
-                >
-                  <Save className="h-4 w-4" />
-                  {isSaving ? 'Saving...' : 'Save Permissions'}
-                </button>
-              </div>
+                )}
+                {isAdmin && (
+                  <p className="mt-3 text-xs text-brown-medium">Admin role always has full access.</p>
+                )}
+              </>
             )}
-            {isAdmin && (
-              <p className="mt-3 text-xs text-brown-medium">Admin role always has full access.</p>
+            {!selectedRole && (
+              <p className="text-sm text-brown-medium py-4 text-center">Select a role above to configure its permissions.</p>
             )}
           </>
         )}
