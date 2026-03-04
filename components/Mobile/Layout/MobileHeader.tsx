@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import AnimatedLogo, { hasAnimatedThisPageLoad } from '@/components/UI/AnimatedLogo'
 import { Menu, X, Home, ListTodo, TrendingUp, Receipt, Calendar, Settings, LogOut, StickyNote, Link2, Mail } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
@@ -32,9 +32,14 @@ const MOBILE_NAV_LINKS: MobileNavLink[] = [
 export default function MobileHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
+  const [adminVisible, setAdminVisible] = useState(hasAnimatedThisPageLoad)
   const pathname = usePathname()
   const { data: session } = useSession()
   const { hasPermission } = usePermissions()
+
+  const handleLogoComplete = useCallback(() => {
+    setAdminVisible(true)
+  }, [])
 
   // Handle menu open/close with animation
   const toggleMenu = () => {
@@ -61,15 +66,14 @@ export default function MobileHeader() {
     <header className="bg-squarage-green backdrop-blur-sm border-b border-white/20">
       <div className="flex items-center justify-between px-4 py-3">
         {/* Logo */}
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/images/logo_main_white_transparent.png"
-            alt="Squarage Logo"
-            width={140}
-            height={47}
-            className="h-10 w-auto"
-            priority
-          />
+        <Link href="/" className="flex items-end gap-1.5">
+          <AnimatedLogo className="h-[22px]" instanceId="mobile-header" onAnimationComplete={handleLogoComplete} />
+          <span
+            className="text-white font-black text-[30px] leading-none transition-opacity duration-500"
+            style={{ opacity: adminVisible ? 1 : 0, marginBottom: '-0.14em', fontFamily: 'var(--font-neue-haas)' }}
+          >
+            Admin
+          </span>
         </Link>
 
         {/* Menu Button */}
