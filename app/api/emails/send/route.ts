@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         templateType,
         variables,
         isTest,
-        sentBy: session?.user?.email || 'system',
+        sentBy: auth.user.email || 'system',
       },
       createdAt: now,
     })
