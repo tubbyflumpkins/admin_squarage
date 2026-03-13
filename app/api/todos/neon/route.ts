@@ -25,31 +25,36 @@ export async function GET() {
       return NextResponse.json(data)
     }
 
-    // Fetch all users for the owner dropdown
-    const dbUsers = await db!.select().from(users)
-    
-    // Create owner list from users with consistent colors
-    const userColors: Record<string, string> = {
-      'Dylan': '#F7901E',  // Orange
-      'Thomas': '#01BAD5', // Blue
-    }
-    
-    const dbOwners = [
-      { id: 'all', name: 'All', color: '#4A9B4E', createdAt: new Date() },
-      ...dbUsers.map(user => ({
-        id: user.id,
-        name: user.name,
-        color: userColors[user.name] || '#8D5524',
-        createdAt: user.createdAt
-      }))
-    ]
-    
-    // Fetch all todos (admin users can see all todos)
-    const [dbTodos, dbCategories, dbSubtasks] = await Promise.all([
+    // Fetch all todos, categories, owners, subtasks, and users in parallel
+    const [dbTodos, dbCategories, dbOwnersFromTable, dbSubtasks, dbUsers] = await Promise.all([
       db!.select().from(todos).orderBy(desc(todos.createdAt)),
       db!.select().from(categories),
-      db!.select().from(subtasks)
+      db!.select().from(owners),
+      db!.select().from(subtasks),
+      db!.select().from(users),
     ])
+
+    // Build owners from the owners table (which has saved colors),
+    // and ensure all users appear as owner options
+    const ownerMap = new Map(dbOwnersFromTable.map(o => [o.id, o]))
+    const defaultColors: Record<string, string> = {
+      'Dylan': '#F7901E',
+      'Thomas': '#01BAD5',
+    }
+    for (const user of dbUsers) {
+      if (!ownerMap.has(user.id)) {
+        ownerMap.set(user.id, {
+          id: user.id,
+          name: user.name,
+          color: defaultColors[user.name] || '#8D5524',
+          createdAt: user.createdAt,
+        })
+      }
+    }
+    if (!ownerMap.has('all')) {
+      ownerMap.set('all', { id: 'all', name: 'All', color: '#4A9B4E', createdAt: new Date() })
+    }
+    const dbOwners = Array.from(ownerMap.values())
 
     // Group subtasks by todo ID
     const subtasksByTodoId = dbSubtasks.reduce((acc, subtask) => {
