@@ -389,6 +389,37 @@ export const emailQueue = pgTable('email_queue', {
   processedAt: timestamp('processed_at'),
 })
 
+// Shared Designs table
+// Customer share links, written and read by LABS (labs /design -> squarage.com/custom/[token]).
+// Nothing in this app uses it. It is declared here because this repo owns the schema:
+// drizzle-kit push drops tables it does not know about. Created by scripts/add-shared-designs-table.ts.
+export const sharedDesigns = pgTable('shared_designs', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  token: varchar('token', { length: 64 }).notNull().unique(), // unguessable link id
+  status: varchar('status', { length: 20 }).notNull().default('open'), // open, paid, revoked
+  customerName: varchar('customer_name', { length: 255 }).notNull(),
+  customerEmail: varchar('customer_email', { length: 255 }),
+  priceCents: integer('price_cents').notNull(),
+  currency: varchar('currency', { length: 3 }).notNull().default('USD'),
+  shippingCents: integer('shipping_cents'), // null = Shopify calculates at checkout, 0 = free
+  notes: text('notes').notNull().default(''),
+  variant: varchar('variant', { length: 20 }).notNull(), // standard, corner, console
+  finish: varchar('finish', { length: 20 }).notNull(), // Walnut, Oak, Birch
+  design: jsonb('design').$type<Record<string, unknown>>().notNull(), // labs saved-design object
+  render: jsonb('render').$type<Record<string, unknown>>().notNull(), // resolved render params
+  svgPreview: text('svg_preview'),
+  shopifyDraftOrderId: varchar('shopify_draft_order_id', { length: 255 }),
+  shopifyDraftOrderName: varchar('shopify_draft_order_name', { length: 50 }),
+  shopifyInvoiceUrl: text('shopify_invoice_url'),
+  shopifyOrderName: varchar('shopify_order_name', { length: 50 }),
+  statusCheckedAt: timestamp('status_checked_at'),
+  paidAt: timestamp('paid_at'),
+  revokedAt: timestamp('revoked_at'),
+  createdBy: varchar('created_by', { length: 255 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 // Type exports for new email tables
 export type EmailTemplate = typeof emailTemplates.$inferSelect
 export type NewEmailTemplate = typeof emailTemplates.$inferInsert
