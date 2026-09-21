@@ -264,6 +264,16 @@ const useMyStore = create<MyStore>((set, get) => ({
 - subtasks (id, todo_id, text, completed, created_at)
 ```
 
+**Shared database**: this Neon database is also used by Squarage Labs (`~/code/labs`, labs.squarage.com), which has no drizzle-kit of its own. **This repo owns the schema for both.** One table here is not used by this app at all:
+
+```sql
+- shared_designs (id, token, status, customer_name, customer_email, price_cents, currency, shipping_cents,
+                  notes, variant, finish, design jsonb, render jsonb, svg_preview, shopify_draft_order_*,
+                  status_checked_at, paid_at, revoked_at, created_by, created_at, updated_at)
+```
+
+It holds labs' customer share links (labs `/design` → `squarage.com/custom/[token]` → a Shopify draft-order checkout). It is declared in `lib/db/schema.ts` (`sharedDesigns`) only so that `drizzle-kit push` keeps it: **push drops any table the schema does not declare, and with `strict: false` it drops an empty one without asking.** To change it, edit the declaration here first, apply it with a one-off idempotent script (the pattern of `scripts/add-shared-designs-table.ts` and `scripts/push-quick-links.ts`), then mirror the columns in labs' `src/lib/db/schema.ts`.
+
 **Database Connection**: Configured via `DATABASE_URL` environment variable
 **Fallback**: Automatically uses JSON file if database is unavailable
 
@@ -332,7 +342,7 @@ npm run start    # Start production server
 npm run lint     # Run ESLint
 
 # Database commands
-npm run db:push         # Push schema to Neon
+npm run db:push         # Push schema to Neon (run from an up-to-date main: it drops undeclared tables, incl. labs' shared_designs)
 npm run db:studio       # Open Drizzle Studio
 npm run db:migrate-data # Migrate JSON to database
 npx tsx scripts/seed-test-data.ts  # Seed test data
@@ -433,6 +443,12 @@ Shared glassmorphism widget wrapper for all 5 dashboard widgets:
 This dashboard is production-ready and deployed on Vercel with full CRUD for todos, sales, calendar, notes, quick links, and expenses.
 
 ## Recent Major Updates
+
+### shared_designs table for Squarage Labs (September 2026)
+- **What**: `sharedDesigns` declared in `lib/db/schema.ts` and created by `scripts/add-shared-designs-table.ts`. Labs writes and reads it; nothing in this app does
+- **Why here**: this repo owns the schema of the Neon database it shares with labs, and `drizzle-kit push` drops tables it does not know about
+- **Do not** run `db:generate` / `db:migrate`: the `drizzle/` folder's snapshots are stale (they still contain the removed notification tables and lack `notes`, `role_permissions` and `expenses*`). Schema changes here go through `db:push` or one-off scripts
+- **Shopify app**: labs uses the same custom app as this repo's discount codes ("Product Manager", `SHOPIFY_ADMIN_ACCESS_TOKEN`). `write_draft_orders` + `read_draft_orders` were added to it for labs' draft orders; `lib/shopify-admin.ts` here still pins API `2024-10`, which Shopify has retired (requests fall forward to the oldest supported version), so bump it when that file is next touched
 
 ### RBAC Permission System (March 2026)
 - **Per-role permissions**: Each role (admin, user, creator) has configurable page/widget access
