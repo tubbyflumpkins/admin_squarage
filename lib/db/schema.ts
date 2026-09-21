@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, timestamp, boolean, integer, jsonb, index } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, varchar, timestamp, boolean, integer, jsonb, index, real } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import type { CollectionColor } from '../salesTypes'
 
@@ -404,6 +404,9 @@ export const sharedDesigns = pgTable('shared_designs', {
   priceCents: integer('price_cents').notNull(),
   currency: varchar('currency', { length: 3 }).notNull().default('USD'),
   shippingCents: integer('shipping_cents'), // null = Shopify calculates at checkout, 0 = free
+  // What Shopify weighs the custom line at when it calculates shipping, and the product it was borrowed from
+  shippingWeightLb: real('shipping_weight_lb'),
+  shipsLike: varchar('ships_like', { length: 255 }),
   notes: text('notes').notNull().default(''),
   variant: varchar('variant', { length: 20 }).notNull(), // standard, corner, console
   finish: varchar('finish', { length: 20 }).notNull(), // Walnut, Oak, Birch

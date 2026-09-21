@@ -267,7 +267,7 @@ const useMyStore = create<MyStore>((set, get) => ({
 **Shared database**: this Neon database is also used by Squarage Labs (`~/code/labs`, labs.squarage.com), which has no drizzle-kit of its own. **This repo owns the schema for both.** One table here is not used by this app at all:
 
 ```sql
-- shared_designs (id, token [indexed, NOT unique: a link's options share it], option_number, status, customer_name, customer_email, price_cents, currency, shipping_cents,
+- shared_designs (id, token [indexed, NOT unique: a link's options share it], option_number, status, customer_name, customer_email, price_cents, currency, shipping_cents, shipping_weight_lb, ships_like,
                   notes, variant, finish, design jsonb, render jsonb, svg_preview, shopify_draft_order_*,
                   status_checked_at, paid_at, revoked_at, created_by, created_at, updated_at)
 ```
