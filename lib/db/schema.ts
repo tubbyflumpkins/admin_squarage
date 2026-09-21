@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, timestamp, boolean, integer, jsonb } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, varchar, timestamp, boolean, integer, jsonb, index } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 import type { CollectionColor } from '../salesTypes'
 
@@ -395,7 +395,9 @@ export const emailQueue = pgTable('email_queue', {
 // drizzle-kit push drops tables it does not know about. Created by scripts/add-shared-designs-table.ts.
 export const sharedDesigns = pgTable('shared_designs', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  token: varchar('token', { length: 64 }).notNull().unique(), // unguessable link id
+  // Unguessable link id. NOT unique: a link can carry several options, one row each, sharing the token
+  token: varchar('token', { length: 64 }).notNull(),
+  optionNumber: integer('option_number').notNull().default(1), // permanent within a link: never renumbered
   status: varchar('status', { length: 20 }).notNull().default('open'), // open, paid, revoked
   customerName: varchar('customer_name', { length: 255 }).notNull(),
   customerEmail: varchar('customer_email', { length: 255 }),
@@ -418,7 +420,9 @@ export const sharedDesigns = pgTable('shared_designs', {
   createdBy: varchar('created_by', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+}, (table) => [
+  index('shared_designs_token_idx').on(table.token),
+])
 
 // Type exports for new email tables
 export type EmailTemplate = typeof emailTemplates.$inferSelect

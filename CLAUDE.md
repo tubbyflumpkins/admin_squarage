@@ -267,12 +267,12 @@ const useMyStore = create<MyStore>((set, get) => ({
 **Shared database**: this Neon database is also used by Squarage Labs (`~/code/labs`, labs.squarage.com), which has no drizzle-kit of its own. **This repo owns the schema for both.** One table here is not used by this app at all:
 
 ```sql
-- shared_designs (id, token, status, customer_name, customer_email, price_cents, currency, shipping_cents,
+- shared_designs (id, token [indexed, NOT unique: a link's options share it], option_number, status, customer_name, customer_email, price_cents, currency, shipping_cents,
                   notes, variant, finish, design jsonb, render jsonb, svg_preview, shopify_draft_order_*,
                   status_checked_at, paid_at, revoked_at, created_by, created_at, updated_at)
 ```
 
-It holds labs' customer share links (labs `/design` → `squarage.com/custom/[token]` → a Shopify draft-order checkout). It is declared in `lib/db/schema.ts` (`sharedDesigns`) only so that `drizzle-kit push` keeps it: **push drops any table the schema does not declare, and with `strict: false` it drops an empty one without asking.** To change it, edit the declaration here first, apply it with a one-off idempotent script (the pattern of `scripts/add-shared-designs-table.ts` and `scripts/push-quick-links.ts`), then mirror the columns in labs' `src/lib/db/schema.ts`.
+It holds labs' customer share links (labs `/design` → `squarage.com/custom/[token]` → a Shopify draft-order checkout). It is declared in `lib/db/schema.ts` (`sharedDesigns`) only so that `drizzle-kit push` keeps it: **push drops any table the schema does not declare, and with `strict: false` it drops an empty one without asking.** To change it, edit the declaration here first, apply it with a one-off idempotent script (the pattern of `scripts/add-shared-designs-table.ts`, `scripts/add-shared-design-options.ts` and `scripts/push-quick-links.ts`), then mirror the columns in labs' `src/lib/db/schema.ts`.
 
 **Database Connection**: Configured via `DATABASE_URL` environment variable
 **Fallback**: Automatically uses JSON file if database is unavailable
