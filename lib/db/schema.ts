@@ -408,10 +408,10 @@ export const sharedDesigns = pgTable('shared_designs', {
   shippingWeightLb: real('shipping_weight_lb'),
   shipsLike: varchar('ships_like', { length: 255 }),
   notes: text('notes').notNull().default(''),
-  variant: varchar('variant', { length: 20 }).notNull(), // standard, corner, console
+  variant: varchar('variant', { length: 20 }).notNull(), // standard, corner, console; or materials (an invoice of line items)
   finish: varchar('finish', { length: 20 }).notNull(), // Walnut, Oak, Birch
-  design: jsonb('design').$type<Record<string, unknown>>().notNull(), // labs saved-design object
-  render: jsonb('render').$type<Record<string, unknown>>().notNull(), // resolved render params
+  design: jsonb('design').$type<Record<string, unknown>>().notNull(), // labs saved-design object (an invoice: its lines)
+  render: jsonb('render').$type<Record<string, unknown>>().notNull(), // resolved render params (an invoice: its lines again)
   svgPreview: text('svg_preview'),
   shopifyDraftOrderId: varchar('shopify_draft_order_id', { length: 255 }),
   shopifyDraftOrderName: varchar('shopify_draft_order_name', { length: 50 }),
