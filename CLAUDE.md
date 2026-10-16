@@ -264,15 +264,18 @@ const useMyStore = create<MyStore>((set, get) => ({
 - subtasks (id, todo_id, text, completed, created_at)
 ```
 
-**Shared database**: this Neon database is also used by Squarage Labs (`~/code/labs`, labs.squarage.com), which has no drizzle-kit of its own. **This repo owns the schema for both.** One table here is not used by this app at all:
+**Shared database**: this Neon database is also used by Squarage Labs (`~/code/labs`, labs.squarage.com), which has no drizzle-kit of its own. **This repo owns the schema for both.** Three tables here are not used by this app at all:
 
 ```sql
 - shared_designs (id, token [indexed, NOT unique: a link's options share it], option_number, status, customer_name, customer_email, price_cents, currency, shipping_cents, shipping_weight_lb, ships_like,
                   notes, variant, finish, design jsonb, render jsonb, svg_preview, shopify_draft_order_*,
                   status_checked_at, paid_at, revoked_at, created_by, created_at, updated_at)
+- labs_designs   (id [labs' own `design-<ms>` ids], name, shelf_type, collection, variant, params jsonb, svg_preview,
+                  created_by, updated_by, created_at, updated_at, deleted_at [soft delete])
+- labs_settings  (key [bit-presets | materials | sheet-presets], value jsonb, version, updated_by, updated_at)
 ```
 
-It holds labs' customer share links (labs `/design` → `squarage.com/custom/[token]` → a Shopify draft-order checkout). It is declared in `lib/db/schema.ts` (`sharedDesigns`) only so that `drizzle-kit push` keeps it: **push drops any table the schema does not declare, and with `strict: false` it drops an empty one without asking.** To change it, edit the declaration here first, apply it with a one-off idempotent script (the pattern of `scripts/add-shared-designs-table.ts`, `scripts/add-shared-design-options.ts` and `scripts/push-quick-links.ts`), then mirror the columns in labs' `src/lib/db/schema.ts`.
+`shared_designs` holds labs' customer share links (labs `/design` → `squarage.com/custom/[token]` → a Shopify draft-order checkout). `labs_designs` is the saved designs of labs' design page and `labs_settings` its studio-wide CNC tooling (the bit library, materials, sheet presets), one jsonb document per key with a version the writer has to quote. They are declared in `lib/db/schema.ts` (`sharedDesigns`, `labsDesigns`, `labsSettings`) only so that `drizzle-kit push` keeps them: **push drops any table the schema does not declare, and with `strict: false` it drops an empty one without asking.** To change one, edit the declaration here first, apply it with a one-off idempotent script (the pattern of `scripts/add-shared-designs-table.ts`, `scripts/add-shared-design-options.ts`, `scripts/add-labs-tables.ts` and `scripts/push-quick-links.ts`), then mirror the columns in labs' `src/lib/db/schema.ts`.
 
 **Database Connection**: Configured via `DATABASE_URL` environment variable
 **Fallback**: Automatically uses JSON file if database is unavailable
@@ -342,7 +345,7 @@ npm run start    # Start production server
 npm run lint     # Run ESLint
 
 # Database commands
-npm run db:push         # Push schema to Neon (run from an up-to-date main: it drops undeclared tables, incl. labs' shared_designs)
+npm run db:push         # Push schema to Neon (run from an up-to-date main: it drops undeclared tables, incl. labs' shared_designs, labs_designs, labs_settings)
 npm run db:studio       # Open Drizzle Studio
 npm run db:migrate-data # Migrate JSON to database
 npx tsx scripts/seed-test-data.ts  # Seed test data
@@ -443,6 +446,10 @@ Shared glassmorphism widget wrapper for all 5 dashboard widgets:
 This dashboard is production-ready and deployed on Vercel with full CRUD for todos, sales, calendar, notes, quick links, and expenses.
 
 ## Recent Major Updates
+
+### labs_designs + labs_settings tables for Squarage Labs (October 2026)
+- **What**: `labsDesigns` and `labsSettings` declared in `lib/db/schema.ts`, created by `scripts/add-labs-tables.ts` (run 2026-10-16). Labs moved its saved designs and its CNC tooling (bit library, materials, sheet presets) out of each browser's localStorage into them, so they are the same on every device. Nothing in this app reads them
+- **Why here**: same reason as `shared_designs` below; the `labs_` prefix marks labs' tables among this app's
 
 ### shared_designs table for Squarage Labs (September 2026)
 - **What**: `sharedDesigns` declared in `lib/db/schema.ts` and created by `scripts/add-shared-designs-table.ts`. Labs writes and reads it; nothing in this app does

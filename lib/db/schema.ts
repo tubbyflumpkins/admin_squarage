@@ -427,6 +427,35 @@ export const sharedDesigns = pgTable('shared_designs', {
   index('shared_designs_token_idx').on(table.token),
 ])
 
+// Squarage Labs' studio data, written and read by LABS; nothing in this app uses either table.
+// Declared here because this repo owns the schema (drizzle-kit push drops tables it does not know about).
+// Created by scripts/add-labs-tables.ts.
+
+// Labs' saved designs (the /design Custom tab): one list for the whole studio, never filtered by user.
+export const labsDesigns = pgTable('labs_designs', {
+  id: varchar('id', { length: 255 }).primaryKey(),              // client-minted `design-<ms>`: labs' saved nests / toolpaths reference it
+  name: varchar('name', { length: 255 }).notNull(),
+  shelfType: varchar('shelf_type', { length: 20 }).notNull(),   // flat | corner | chair | tiled | hanger | saturn | blobbed
+  collection: varchar('collection', { length: 20 }).notNull(),  // warped | pose | tiled | lighting | blobbed
+  variant: varchar('variant', { length: 40 }),                  // standard, corner, console, hanger, chair, saturnV2, speaker...
+  params: jsonb('params').$type<Record<string, unknown>>().notNull(), // the design's flat param bag
+  svgPreview: text('svg_preview'),
+  createdBy: varchar('created_by', { length: 255 }),
+  updatedBy: varchar('updated_by', { length: 255 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at'),                           // soft delete: the id stays taken, so a stale browser's import cannot bring it back
+})
+
+// Labs' studio-wide tooling, one jsonb document per key: bit-presets, materials, sheet-presets (later: nests, toolpaths...).
+export const labsSettings = pgTable('labs_settings', {
+  key: varchar('key', { length: 64 }).primaryKey(),
+  value: jsonb('value').$type<unknown>().notNull(),
+  version: integer('version').notNull().default(1),             // +1 per write; a PUT quotes the version it read, 409 otherwise
+  updatedBy: varchar('updated_by', { length: 255 }),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 // Type exports for new email tables
 export type EmailTemplate = typeof emailTemplates.$inferSelect
 export type NewEmailTemplate = typeof emailTemplates.$inferInsert
